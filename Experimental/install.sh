@@ -477,7 +477,7 @@ cat << 'DONE'
   ╔══════════════════════════════════════════════╗
   ║   ✓  Installation complete!                  ║
   ║                                              ║
-  ║   Reboot to enjoy Hyprland + Noctalia Shell  ║
+  ║   Reboot to enjoy your new NixOS system!     ║
   ╚══════════════════════════════════════════════╝
 DONE
 echo -e "${RESET}"
