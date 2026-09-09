@@ -128,8 +128,31 @@ fi
 # branches have diverged (merge, rebase, reset, or skip).
 attempt_pull_with_resolution() {
   local dir="$1"
+
+  # Backup user's vars.nix (use unique name if one already exists)
+  local bak="/tmp/vars.nix.bak"
+  if [[ -f "$bak" ]]; then
+    bak="/tmp/vars.nix.bak.$$"
+  fi
+  if [[ -f "$dir/vars.nix" ]]; then
+    cp "$dir/vars.nix" "$bak"
+    info "Backed up vars.nix to $bak"
+    # If vars.nix is tracked, restore the committed copy to avoid merge conflicts
+    if git -C "$dir" ls-files --error-unmatch vars.nix >/dev/null 2>&1; then
+      git -C "$dir" checkout -- vars.nix >/dev/null 2>&1 || true
+    fi
+  fi
+
+  restore_vars() {
+    if [[ -f "$bak" ]]; then
+      mv "$bak" "$dir/vars.nix"
+      info "Restored your vars.nix."
+    fi
+  }
+
   if git -C "$dir" pull --ff-only origin main; then
     success "Repository updated to $(git -C "$dir" rev-parse --short HEAD)."
+    restore_vars
     return 0
   fi
 
@@ -146,17 +169,21 @@ attempt_pull_with_resolution() {
     case "$_choice" in
       1)
         if git -C "$dir" merge --no-edit origin/main; then
-          success "Merged origin/main into local ($(git -C \"$dir\" rev-parse --short HEAD))."
+          success "Merged origin/main into local ($(git -C "$dir" rev-parse --short HEAD))."
+          restore_vars
           break
         else
+          restore_vars
           die "Merge failed — please resolve conflicts in $dir manually."
         fi
         ;;
       2)
         if git -C "$dir" rebase origin/main; then
-          success "Rebased local commits on top of origin/main ($(git -C \"$dir\" rev-parse --short HEAD))."
+          success "Rebased local commits on top of origin/main ($(git -C "$dir" rev-parse --short HEAD))."
+          restore_vars
           break
         else
+          restore_vars
           die "Rebase failed — please resolve conflicts in $dir manually."
         fi
         ;;
@@ -165,6 +192,7 @@ attempt_pull_with_resolution() {
         if [[ "${_force,,}" =~ ^(y|yes)$ ]]; then
           git -C "$dir" reset --hard origin/main
           success "Reset local branch to origin/main ($(git -C \"$dir\" rev-parse --short HEAD))."
+          restore_vars
           break
         else
           continue
@@ -172,6 +200,7 @@ attempt_pull_with_resolution() {
         ;;
       4)
         warn "Skipping update for $dir."
+        restore_vars
         break
         ;;
       *)
