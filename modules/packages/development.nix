@@ -32,7 +32,7 @@
     # VSCodium: Open-source VS Code without Microsoft telemetry.
     # Keep VSCodium and skip the redundant Microsoft build.
     vscodium
-    # vscode  # Uncomment only if you specifically need the Microsoft build
+    vscode  # Uncomment only if you specifically need the Microsoft build
 
     # Helix: modal editor with built-in language-server support.
     helix
