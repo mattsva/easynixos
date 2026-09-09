@@ -4,6 +4,7 @@
 let
   useNoct = vars.desktopShell == "noctalia";
   useCaelestia = vars.desktopShell == "caelestia";
+  useEnd4 = vars.desktopShell == "end4-dots";
 in
 {
   imports = ([
@@ -15,6 +16,8 @@ in
   ] else if useCaelestia then [
     inputs.caelestia-shell.homeManagerModules.default
     ./caelestia.nix
+  ] else if useEnd4 then [
+    ./end4-dots.nix
   ] else [
     # Import the upstream Dank homeModule so it configures what it expects
     inputs.dankmaterials.homeModules.dank-material-shell

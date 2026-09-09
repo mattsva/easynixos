@@ -290,7 +290,7 @@ validate_keyboard() {
 }
 
 validate_desktop_shell() {
-  local allowed=("caelestia" "noctalia" "dank")
+  local allowed=("caelestia" "noctalia" "dank" "end4-dots")
   for s in "${allowed[@]}"; do
     [[ "$s" == "$1" ]] && return 0
   done

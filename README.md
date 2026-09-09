@@ -35,7 +35,7 @@ At minimum, verify these values in `vars.nix`:
 - `location.timezone`
 - `browser`, `terminal`, and `fileManager`
 - `wallpaperDir` and `wallpaperFile`
-- `desktopShell`: `caelestia`, `noctalia`, or `dank`
+- `desktopShell`: `caelestia`, `noctalia`, `dank`, or `end4-dots`
 - `hyprConfig`: currently `hyprlang` is recommended
 
 ## Daily workflow
@@ -61,6 +61,7 @@ Set `desktopShell` in `vars.nix` and rebuild. The selected shell is configured i
 - `caelestia` is the current default and uses the Caelestia flake modules.
 - `noctalia` uses the Noctalia package and Home Manager module.
 - `dank` uses DankMaterialShell’s Home Manager module.
+- `end4-dots` uses the end4-dots / end4-inspired Hyprland flow with the same launcher and clipboard conventions.
 
 Hyprland keybindings use the configured terminal, file manager, browser, and shell commands. Monitor definitions in `home/hyprland.nix` are examples for the current machine and should be adjusted for different displays.
 

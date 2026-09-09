@@ -7,12 +7,13 @@
 { config, pkgs, vars, inputs, ... }:
 
 let
-  # Desktop shell module, picked from vars.desktopShell ("noctalia" | "dank" | "caelestia").
+  # Desktop shell module, picked from vars.desktopShell ("noctalia" | "dank" | "caelestia" | "end4-dots").
   # Only the selected shell's system-level module is imported, so the other shells' services
   # never start and don't fight over the compositor / lockscreen PAM entry.
   desktopShellModule =
     if vars.desktopShell == "noctalia" then ../../modules/desktop/noctalia.nix
     else if vars.desktopShell == "caelestia" then ../../modules/desktop/caelestia.nix
+    else if vars.desktopShell == "end4-dots" then ../../modules/desktop/end4-dots.nix
     else { };
 in
 {
@@ -58,8 +59,8 @@ in
 
   assertions = [
     {
-      assertion = builtins.elem vars.desktopShell [ "caelestia" "noctalia" "dank" ];
-      message = "vars.desktopShell must be one of: caelestia, noctalia, dank";
+      assertion = builtins.elem vars.desktopShell [ "caelestia" "noctalia" "dank" "end4-dots" ];
+      message = "vars.desktopShell must be one of: caelestia, noctalia, dank, end4-dots";
     }
   ];
 
