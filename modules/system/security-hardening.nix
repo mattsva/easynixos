@@ -80,7 +80,7 @@
   # USER ISOLATION (FIXED: removed invalid option)
   # ====================================================================================================================
   security.protectKernelLogs = true;
-  security.protectHostname = true;
+  #security.protectHostname = true;
   security.protectKernelTunables = true;
   security.restrictNamespaces = true;
 

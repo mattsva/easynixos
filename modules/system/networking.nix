@@ -17,7 +17,7 @@
     # NM's connectivity check normally polls a canonical URL (e.g. nmcheck.gnome.org) in the
     # clear on every network change - a small but free metadata leak ("this machine just joined
     # this network"). Off by default; NetworkManager still detects link-up fine without it.
-    connectivity.enable = false;
+    #connectivity.enable = false;
 
     # FortiSSL VPN integration for NetworkManager.
     plugins = with pkgs; [
