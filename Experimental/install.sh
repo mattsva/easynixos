@@ -123,6 +123,63 @@ if is_our_repo "$NIXOS_DIR"; then
 fi
 
 # Decide what to do ------------------------------------------------------------
+# Helper: attempt a fast-forward pull, and offer interactive resolutions when
+# branches have diverged (merge, rebase, reset, or skip).
+attempt_pull_with_resolution() {
+  local dir="$1"
+  if git -C "$dir" pull --ff-only origin main; then
+    success "Repository updated to $(git -C "$dir" rev-parse --short HEAD)."
+    return 0
+  fi
+
+  warn "Fast-forward pull failed: local and remote branches have diverged."
+  echo ""
+  echo "Choose how to resolve the divergence:"
+  echo "  1) Merge    — merge origin/main into local (preserve both histories)"
+  echo "  2) Rebase   — rebase local commits onto origin/main (rewrites local history)"
+  echo "  3) Reset    — reset local branch to origin/main (discard local commits)"
+  echo "  4) Skip     — do not update (keep local branch as-is)"
+  while true; do
+    read -rp "$(echo -e "${BOLD}Choice [1/2/3/4, default 1]: ${RESET}")" _choice
+    _choice="${_choice:-1}"
+    case "$_choice" in
+      1)
+        if git -C "$dir" merge --no-edit origin/main; then
+          success "Merged origin/main into local ($(git -C \"$dir\" rev-parse --short HEAD))."
+          break
+        else
+          die "Merge failed — please resolve conflicts in $dir manually."
+        fi
+        ;;
+      2)
+        if git -C "$dir" rebase origin/main; then
+          success "Rebased local commits on top of origin/main ($(git -C \"$dir\" rev-parse --short HEAD))."
+          break
+        else
+          die "Rebase failed — please resolve conflicts in $dir manually."
+        fi
+        ;;
+      3)
+        read -rp "$(echo -e "${BOLD}This will discard local commits. Continue? [y/N] ${RESET}")" _force
+        if [[ "${_force,,}" =~ ^(y|yes)$ ]]; then
+          git -C "$dir" reset --hard origin/main
+          success "Reset local branch to origin/main ($(git -C \"$dir\" rev-parse --short HEAD))."
+          break
+        else
+          continue
+        fi
+        ;;
+      4)
+        warn "Skipping update for $dir."
+        break
+        ;;
+      *)
+        warn "Invalid choice."
+        ;;
+    esac
+  done
+}
+
 if $NIXOS_IS_REPO; then
   # Already in place — check for updates
   info "Checking for upstream updates…"
@@ -143,8 +200,7 @@ if $NIXOS_IS_REPO; then
         cp "$NIXOS_DIR/vars.nix" /tmp/vars.nix.bak
         info "Backed up vars.nix to /tmp/vars.nix.bak"
       fi
-      git -C "$NIXOS_DIR" pull --ff-only origin main
-      success "Repository updated to $(git -C "$NIXOS_DIR" rev-parse --short HEAD)."
+      attempt_pull_with_resolution "$NIXOS_DIR"
       # Restore vars.nix if it was backed up
       if [[ -f /tmp/vars.nix.bak ]]; then
         cp /tmp/vars.nix.bak "$NIXOS_DIR/vars.nix"
@@ -163,8 +219,7 @@ elif [[ -n "$LOCAL_CANDIDATE" ]]; then
   LOCAL_HASH=$(git -C "$LOCAL_CANDIDATE" rev-parse HEAD)
   REMOTE_HASH=$(git -C "$LOCAL_CANDIDATE" rev-parse origin/main)
   if [[ "$LOCAL_HASH" != "$REMOTE_HASH" ]]; then
-    git -C "$LOCAL_CANDIDATE" pull --ff-only origin main
-    success "Updated to $(git -C "$LOCAL_CANDIDATE" rev-parse --short HEAD)."
+    attempt_pull_with_resolution "$LOCAL_CANDIDATE"
   fi
 
   # Back up existing /etc/nixos if needed
