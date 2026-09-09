@@ -275,29 +275,68 @@ validate_filemanager() {
   return 1
 }
 
+validate_hostname() {
+  if [[ ! "$1" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]]; then
+    warn "Invalid hostname '${1}'. Use letters, digits, dots or hyphens; must start with a letter or digit."
+    return 1
+  fi
+}
+
+validate_keyboard() {
+  if [[ ! "$1" =~ ^[A-Za-z0-9,_-]+(,[A-Za-z0-9,_-]+)*$ ]]; then
+    warn "Invalid keyboard layout '${1}'. Common examples: us, de, us,de, us,fr"
+    return 1
+  fi
+}
+
+validate_desktop_shell() {
+  local allowed=("caelestia" "noctalia" "dank")
+  for s in "${allowed[@]}"; do
+    [[ "$s" == "$1" ]] && return 0
+  done
+  warn "Unknown desktop shell '${1}'. Choose: ${allowed[*]} (dank = DMS)."
+  return 1
+}
+
 # Detect sensible defaults from the running system where possible
 _default_user="${SUDO_USER:-$(getent passwd 1000 2>/dev/null | cut -d: -f1)}"
 _default_user="${_default_user:-nixos}"
 _default_tz=$(timedatectl show --property=Timezone --value 2>/dev/null || echo "Europe/London")
 _default_city=$(echo "$_default_tz" | cut -d'/' -f2 | tr '_' ' ')
+_default_hostname=$(hostnamectl --static 2>/dev/null || hostname 2>/dev/null || echo "nixos")
+_default_keyboard=$(localectl --no-pager status 2>/dev/null | awk -F': ' '/X11 Layout|VC Keymap/ {print $2; exit}' || true)
+_default_keyboard="${_default_keyboard:-us}"
+_default_desktop_shell="caelestia"
+if [[ -f "$NIXOS_DIR/vars.nix" ]]; then
+  _existing_desktop_shell=$(sed -n 's/^[[:space:]]*desktopShell[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$NIXOS_DIR/vars.nix" | head -n 1 || true)
+  if [[ -n "$_existing_desktop_shell" ]]; then
+    _default_desktop_shell="$_existing_desktop_shell"
+  fi
+fi
 
 ask VAR_USERNAME  "System username (userName)"          "$_default_user"  validate_username
 ask VAR_GIT_NAME  "Git display name (gitName)"          "$VAR_USERNAME"
 ask VAR_EMAIL     "Git / user email (userEmail)"        ""                validate_email
+ask VAR_HOSTNAME  "Machine hostname"                    "$_default_hostname" validate_hostname
+ask VAR_KEYBOARD  "Keyboard layout (us, de, us,de, ...)" "$_default_keyboard" validate_keyboard
 ask VAR_TIMEZONE  "Timezone (e.g. Europe/Berlin)"       "$_default_tz"   validate_timezone
 ask VAR_CITY      "City (display only)"                 "$_default_city"
 ask VAR_TERMINAL  "Default terminal emulator"           "foot"            validate_terminal
 ask VAR_FM        "Default file manager"                "thunar"          validate_filemanager
+ask VAR_DESKTOP_SHELL "Desktop shell (caelestia / noctalia / dank)" "$_default_desktop_shell" validate_desktop_shell
 
 echo ""
 echo -e "  ${BOLD}Summary of your choices:${RESET}"
-echo -e "  userName    = ${GREEN}${VAR_USERNAME}${RESET}"
-echo -e "  gitName     = ${GREEN}${VAR_GIT_NAME}${RESET}"
-echo -e "  userEmail   = ${GREEN}${VAR_EMAIL}${RESET}"
-echo -e "  timezone    = ${GREEN}${VAR_TIMEZONE}${RESET}"
-echo -e "  city        = ${GREEN}${VAR_CITY}${RESET}"
-echo -e "  terminal    = ${GREEN}${VAR_TERMINAL}${RESET}"
-echo -e "  fileManager = ${GREEN}${VAR_FM}${RESET}"
+echo -e "  userName      = ${GREEN}${VAR_USERNAME}${RESET}"
+echo -e "  gitName       = ${GREEN}${VAR_GIT_NAME}${RESET}"
+echo -e "  userEmail     = ${GREEN}${VAR_EMAIL}${RESET}"
+echo -e "  hostname      = ${GREEN}${VAR_HOSTNAME}${RESET}"
+echo -e "  keyboard      = ${GREEN}${VAR_KEYBOARD}${RESET}"
+echo -e "  timezone      = ${GREEN}${VAR_TIMEZONE}${RESET}"
+echo -e "  city          = ${GREEN}${VAR_CITY}${RESET}"
+echo -e "  terminal      = ${GREEN}${VAR_TERMINAL}${RESET}"
+echo -e "  fileManager   = ${GREEN}${VAR_FM}${RESET}"
+echo -e "  desktopShell  = ${GREEN}${VAR_DESKTOP_SHELL}${RESET}"
 echo ""
 read -rp "$(echo -e "${BOLD}Look good? Proceed? [Y/n] ${RESET}")" _ok
 [[ "${_ok,,}" =~ ^(n|no)$ ]] && die "Aborted. No files have been modified."
@@ -323,6 +362,9 @@ cat > "$VARS_FILE" << VARSNIX
   userEmail   = "$(escape_nix_string "$VAR_EMAIL")";
   gitName     = "$(escape_nix_string "$VAR_GIT_NAME")";
 
+  hostName       = "$(escape_nix_string "$VAR_HOSTNAME")";
+  keyboardLayout = "$(escape_nix_string "$VAR_KEYBOARD")";
+
   location = {
     timezone = "$(escape_nix_string "$VAR_TIMEZONE")";
     city     = "$(escape_nix_string "$VAR_CITY")";
@@ -336,7 +378,7 @@ cat > "$VARS_FILE" << VARSNIX
 
   # Default browser and desktop settings used by the active modules.
   browser      = "librewolf";
-  desktopShell = "caelestia";
+  desktopShell = "$(escape_nix_string "$VAR_DESKTOP_SHELL")";
   hyprConfig   = "hyprlang";
 
   wallpaperDir  = "/home/$(escape_nix_string "$VAR_USERNAME")/Pictures/Wallpapers";

@@ -3,11 +3,11 @@
 # Network stack: NetworkManager, firewall, Tailscale overlay network,
 # KDE Connect (phone integration), and OpenFortiVPN (corporate VPN).
 # ------------------------------------------------------------------------------------------------------------------------
-{ config, pkgs, ... }:
+{ config, pkgs, vars, ... }:
 
 {
   # Basic networking -----------------------------------------------------------------------------------------------------
-  networking.hostName = "nixos";
+  networking.hostName = vars.hostName;
 
   networking.networkmanager = {
     enable = true;

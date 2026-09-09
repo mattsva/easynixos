@@ -22,12 +22,13 @@
     LC_TIME           = "de_DE.UTF-8";
   };
 
-  # US is the default; German is available with Alt+Shift when needed.
+  # Keyboard layout can be overridden per machine. The installer fills this from the
+  # running system or from the overview prompt, and the module then applies it here.
   services.xserver.xkb = {
-    layout  = "us,de";
+    layout  = vars.keyboardLayout;
     options = "grp:alt_shift_toggle";
   };
 
   # TTY keyboard layout (for virtual consoles, before Wayland starts)
-  console.keyMap = "us";
+  console.keyMap = vars.keyboardLayout;
 }

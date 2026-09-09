@@ -7,6 +7,9 @@
 
   gitName = "NixOS User";
 
+  hostName = "nixos";
+  keyboardLayout = "us";
+
   location = {
     timezone = "Etc/UTC";
     city     = "Example City";
