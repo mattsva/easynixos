@@ -25,6 +25,7 @@ header() {
 REPO_URL="https://github.com/mattsva/easynixos.git"
 NIXOS_DIR="/etc/nixos"
 REPO_NAME="easynixos"
+INSTALLER_VERSION="dev"
 
 # ==============================================================================
 #  0. Root check
@@ -75,11 +76,18 @@ cat << 'BANNER'
 BANNER
 echo -e "${RESET}"
 
+# Discover the checked-out repo version as soon as it is available so the banner shows
+# the active installer revision instead of only a generic placeholder.
+if git -C "$NIXOS_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  INSTALLER_VERSION=$(git -C "$NIXOS_DIR" describe --tags --always --dirty 2>/dev/null || git -C "$NIXOS_DIR" rev-parse --short HEAD 2>/dev/null || echo "dev")
+fi
+
 echo -e "  This installer will:\n"
 echo -e "  ${CYAN}1.${RESET} Clone or update the config repo into ${BOLD}/etc/nixos${RESET}"
 echo -e "  ${CYAN}2.${RESET} Ask you for your personal variables (${BOLD}vars.nix${RESET})"
 echo -e "  ${CYAN}3.${RESET} Generate ${BOLD}hardware-configuration.nix${RESET} for this machine"
 echo -e "  ${CYAN}4.${RESET} Run ${BOLD}nixos-rebuild switch --flake /etc/nixos#nixos${RESET}\n"
+echo -e "  ${BOLD}Current installer version:${RESET} ${GREEN}${INSTALLER_VERSION}${RESET}\n"
 
 read -rp "$(echo -e "${BOLD}Continue? [Y/n] ${RESET}")" _confirm
 [[ "${_confirm,,}" =~ ^(n|no)$ ]] && die "Aborted by user."
@@ -437,8 +445,17 @@ fi
 # ==============================================================================
 header "Step 5 — Building NixOS"
 
+# Rebuilds are performed against the checked-out repo in /etc/nixos. If that tree was
+# created or moved by a different user or from a backup, it may not be writable by the
+# user doing the rebuild. Fix the ownership/permissions here before invoking nixos-rebuild.
+if [[ -d "$NIXOS_DIR" ]]; then
+  info "Ensuring the NixOS config tree is writable for the rebuild…"
+  chown -R root:root "$NIXOS_DIR"
+  chmod -R u+rwX,go+rX "$NIXOS_DIR"
+fi
+
 echo -e "  About to run:"
-echo -e "  ${BOLD}nixos-rebuild switch --flake ${NIXOS_DIR}#nixos${RESET}\n"
+echo -e "  ${BOLD}sudo nixos-rebuild switch --flake ${NIXOS_DIR}#nixos${RESET}\n"
 echo -e "  ${YELLOW}This will download all flake inputs on first run."
 echo -e "  It can take quite a while — grab a coffee. ☕${RESET}\n"
 
@@ -449,7 +466,7 @@ if [[ "${_build,,}" =~ ^(n|no)$ ]]; then
   exit 0
 fi
 
-nixos-rebuild switch --flake "${NIXOS_DIR}#nixos"
+sudo nixos-rebuild switch --flake "${NIXOS_DIR}#nixos"
 
 # ==============================================================================
 #  Done
