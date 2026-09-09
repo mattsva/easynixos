@@ -4,6 +4,7 @@ let
   # Helpers for selecting behavior based on vars
   isNoct = vars.desktopShell == "noctalia";
   isCaelestia = vars.desktopShell == "caelestia";
+  isEnd4 = vars.desktopShell == "end4-dots";
   dmsCmd = "dms"; # upstream executable for DankMaterialShell
   # Map the user-facing hyprConfig values to what the hypr home-module expects.
   # Accept either "hyprlandlua" or "lua" to mean the Lua-based config, otherwise
@@ -12,11 +13,11 @@ let
 
   # Centralized shell command strings so keybindings can use whichever shell is selected.
   shellCmds = {
-    menuCmd          = if isNoct then "noctalia msg panel-toggle launcher" else if isCaelestia then "hyprctl dispatch global caelestia:launcher" else dmsCmd;
-    controlCenterCmd = if isNoct then "noctalia msg panel-toggle control-center" else if isCaelestia then "hyprctl dispatch global caelestia:sidebar" else "${dmsCmd} msg panel-toggle control-center";
-    settingsCmd      = if isNoct then "noctalia msg panel-toggle settings" else if isCaelestia then "caelestia shell -s" else "${dmsCmd} msg panel-toggle settings";
-    wallpaperCmd     = if isNoct then "noctalia msg panel-toggle wallpaper" else if isCaelestia then "caelestia wallpaper" else "${dmsCmd} msg panel-toggle wallpaper";
-    sessionCmd       = if isNoct then "noctalia msg panel-toggle session" else if isCaelestia then "hyprctl dispatch global caelestia:session" else "${dmsCmd} msg panel-toggle session";
+    menuCmd          = if isNoct then "noctalia msg panel-toggle launcher" else if isCaelestia then "hyprctl dispatch global caelestia:launcher" else if isEnd4 then "rofi -show drun" else dmsCmd;
+    controlCenterCmd = if isNoct then "noctalia msg panel-toggle control-center" else if isCaelestia then "hyprctl dispatch global caelestia:sidebar" else if isEnd4 then "rofi -show window" else "${dmsCmd} msg panel-toggle control-center";
+    settingsCmd      = if isNoct then "noctalia msg panel-toggle settings" else if isCaelestia then "caelestia shell -s" else if isEnd4 then "rofi -show run" else "${dmsCmd} msg panel-toggle settings";
+    wallpaperCmd     = if isNoct then "noctalia msg panel-toggle wallpaper" else if isCaelestia then "caelestia wallpaper" else if isEnd4 then "swww img $(find ${vars.wallpaperDir} -type f | head -n 1)" else "${dmsCmd} msg panel-toggle wallpaper";
+    sessionCmd       = if isNoct then "noctalia msg panel-toggle session" else if isCaelestia then "hyprctl dispatch global caelestia:session" else if isEnd4 then "hyprctl dispatch exit" else "${dmsCmd} msg panel-toggle session";
   };
   terminalCmd = if vars.terminal == "foot" then "footclient" else vars.terminal;
 in
@@ -134,7 +135,7 @@ in
 
         "$mainMod, Q,     killactive,"
         "$mainMod, F,     fullscreen"
-        "$mainMod, V,     togglefloating,"
+        "$mainMod, V,     exec, cliphist list | rofi -dmenu | cliphist decode | wl-copy"
         "$mainMod, P,     pseudo,"
 
         # Use centralized shell commands (Noctalia or DMS) for these bindings:
