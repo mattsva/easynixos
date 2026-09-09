@@ -1,0 +1,23 @@
+# Nix build outputs
+result
+result-*
+.direnv/
+
+# Machine-local configuration backups
+*.nix.bak
+*.nix.bak_*
+*.bak
+*.bak_*
+
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+secrets/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*~
