@@ -25,7 +25,7 @@ header() {
 REPO_URL="https://github.com/mattsva/easynixos.git"
 NIXOS_DIR="/etc/nixos"
 REPO_NAME="easynixos"
-INSTALLER_VERSION="dev"
+INSTALLER_VERSION="alpha-0.0.2"
 
 # ==============================================================================
 #  0. Root check
@@ -77,8 +77,9 @@ BANNER
 echo -e "${RESET}"
 
 # Discover the checked-out repo version as soon as it is available so the banner shows
-# the active installer revision instead of only a generic placeholder.
-if git -C "$NIXOS_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+# the active installer revision instead of only a generic placeholder. Only override
+# the script's built-in installer version when it is still the default 'dev'.
+if [[ "$INSTALLER_VERSION" == "dev" ]] && git -C "$NIXOS_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   INSTALLER_VERSION=$(git -C "$NIXOS_DIR" describe --tags --always --dirty 2>/dev/null || git -C "$NIXOS_DIR" rev-parse --short HEAD 2>/dev/null || echo "dev")
 fi
 
@@ -119,34 +120,62 @@ fi
 # Check /etc/nixos
 if is_our_repo "$NIXOS_DIR"; then
   info "Found repo already at ${BOLD}${NIXOS_DIR}${RESET}"
-  NIXOS_IS_REPO=true
-fi
+  if $NIXOS_IS_REPO; then
+    # Already in place — check for updates and remote tags
+    info "Checking for upstream updates…"
+    git -C "$NIXOS_DIR" fetch origin main --tags --quiet
+    LOCAL_HASH=$(git -C "$NIXOS_DIR" rev-parse HEAD)
+    REMOTE_HASH=$(git -C "$NIXOS_DIR" rev-parse origin/main)
 
-# Decide what to do ------------------------------------------------------------
-# Helper: attempt a fast-forward pull, and offer interactive resolutions when
-# branches have diverged (merge, rebase, reset, or skip).
-attempt_pull_with_resolution() {
-  local dir="$1"
-  if git -C "$dir" pull --ff-only origin main; then
-    success "Repository updated to $(git -C "$dir" rev-parse --short HEAD)."
-    return 0
-  fi
+    LOCAL_TAG=$(git -C "$NIXOS_DIR" describe --tags --abbrev=0 2>/dev/null || true)
+    REMOTE_TAG=$(git -C "$NIXOS_DIR" ls-remote --tags origin | awk -F'/' '/refs\/tags\// {print $3}' | sed 's/\^{}$//' | sort -V | tail -n1)
 
-  warn "Fast-forward pull failed: local and remote branches have diverged."
-  echo ""
-  echo "Choose how to resolve the divergence:"
-  echo "  1) Merge    — merge origin/main into local (preserve both histories)"
-  echo "  2) Rebase   — rebase local commits onto origin/main (rewrites local history)"
-  echo "  3) Reset    — reset local branch to origin/main (discard local commits)"
-  echo "  4) Skip     — do not update (keep local branch as-is)"
-  while true; do
-    read -rp "$(echo -e "${BOLD}Choice [1/2/3/4, default 1]: ${RESET}")" _choice
-    _choice="${_choice:-1}"
-    case "$_choice" in
-      1)
-        if git -C "$dir" merge --no-edit origin/main; then
-          success "Merged origin/main into local ($(git -C \"$dir\" rev-parse --short HEAD))."
-          break
+    # If a newer release tag exists remotely, offer to switch to it.
+    if [[ -n "$REMOTE_TAG" && "$REMOTE_TAG" != "$LOCAL_TAG" ]]; then
+      echo ""
+      info "A release tag is available on origin: ${BOLD}${REMOTE_TAG}${RESET}"
+      read -rp "$(echo -e "  ${BOLD}Switch to this release tag? [Y/n] ${RESET}")" _use_tag
+      if [[ ! "${_use_tag,,}" =~ ^(n|no)$ ]]; then
+        # Preserve vars.nix
+        if [[ -f "$NIXOS_DIR/vars.nix" ]]; then
+          cp "$NIXOS_DIR/vars.nix" /tmp/vars.nix.bak
+          info "Backed up vars.nix to /tmp/vars.nix.bak"
+        fi
+        git -C "$NIXOS_DIR" checkout --force "tags/$REMOTE_TAG" || die "Failed to check out tag $REMOTE_TAG"
+        git -C "$NIXOS_DIR" reset --hard
+        success "Checked out release ${REMOTE_TAG}."
+        # Restore vars.nix
+        if [[ -f /tmp/vars.nix.bak ]]; then
+          mv /tmp/vars.nix.bak "$NIXOS_DIR/vars.nix"
+          info "Restored your vars.nix."
+        fi
+      else
+        info "Not switching to the release tag."
+      fi
+
+    else
+      if [[ "$LOCAL_HASH" == "$REMOTE_HASH" ]]; then
+        success "Already up to date (${LOCAL_HASH:0:7})."
+      else
+        warn "New commits available on origin/main."
+        warn "  local  → ${LOCAL_HASH:0:7}"
+        warn "  remote → ${REMOTE_HASH:0:7}"
+        read -rp "$(echo -e "${BOLD}Pull updates now? [Y/n] ${RESET}")" _pull
+        if [[ ! "${_pull,,}" =~ ^(n|no)$ ]]; then
+          # Preserve vars.nix if the user already customised it
+          if [[ -f "$NIXOS_DIR/vars.nix" ]]; then
+            cp "$NIXOS_DIR/vars.nix" /tmp/vars.nix.bak
+            info "Backed up vars.nix to /tmp/vars.nix.bak"
+          fi
+          attempt_pull_with_resolution "$NIXOS_DIR"
+          # Restore vars.nix if it was backed up
+          if [[ -f /tmp/vars.nix.bak ]]; then
+            cp /tmp/vars.nix.bak "$NIXOS_DIR/vars.nix"
+            info "Restored your vars.nix."
+          fi
+        fi
+      fi
+    fi
         else
           die "Merge failed — please resolve conflicts in $dir manually."
         fi
@@ -377,15 +406,63 @@ if [[ -f "$NIXOS_DIR/vars.nix" ]]; then
   fi
 fi
 
+# Helper: fetch an existing value from the current vars.nix if available
+get_existing_var() {
+  local key="$1" file="$2" val
+  file="${file:-$NIXOS_DIR/vars.nix}"
+  case "$key" in
+    timezone)
+      val=$(sed -n 's/.*timezone[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$file" | head -n1 || true)
+      ;;
+    city)
+      val=$(sed -n 's/.*city[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$file" | head -n1 || true)
+      ;;
+    *)
+      val=$(sed -n "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\"\([^"]*\)\".*/\1/p" "$file" | head -n1 || true)
+      ;;
+  esac
+  printf '%s' "$val"
+}
+
+# If an existing vars.nix is present, prefer its values as defaults
+if [[ -f "$NIXOS_DIR/vars.nix" ]]; then
+  _existing_user=$(get_existing_var userName)
+  [[ -n "$_existing_user" ]] && _default_user="$_existing_user"
+  _existing_git=$(get_existing_var gitName)
+  [[ -n "$_existing_git" ]] && _default_git="$_existing_git"
+  _existing_email=$(get_existing_var userEmail)
+  [[ -n "$_existing_email" ]] && _default_email="$_existing_email"
+  _existing_host=$(get_existing_var hostName)
+  [[ -n "$_existing_host" ]] && _default_hostname="$_existing_host"
+  _existing_kb=$(get_existing_var keyboardLayout)
+  [[ -n "$_existing_kb" ]] && _default_keyboard="$_existing_kb"
+  _existing_tz=$(get_existing_var timezone)
+  [[ -n "$_existing_tz" ]] && _default_tz="$_existing_tz"
+  _existing_city=$(get_existing_var city)
+  [[ -n "$_existing_city" ]] && _default_city="$_existing_city"
+  _existing_term=$(get_existing_var terminal)
+  [[ -n "$_existing_term" ]] && _default_terminal="$_existing_term"
+  _existing_fm=$(get_existing_var fileManager)
+  [[ -n "$_existing_fm" ]] && _default_fm="$_existing_fm"
+  _existing_ds=$(get_existing_var desktopShell)
+  [[ -n "$_existing_ds" ]] && _default_desktop_shell="$_existing_ds"
+fi
+
+# Fallback defaults for prompts that may have been filled from existing vars
+_default_git="${_default_git:-$_default_user}"
+_default_email="${_default_email:-""}"
+_default_terminal="${_default_terminal:-foot}"
+_default_fm="${_default_fm:-thunar}"
+
 ask VAR_USERNAME  "System username (userName)"          "$_default_user"  validate_username
-ask VAR_GIT_NAME  "Git display name (gitName)"          "$VAR_USERNAME"
-ask VAR_EMAIL     "Git / user email (userEmail)"        ""                validate_email
+ask VAR_GIT_NAME  "Git display name (gitName)"          "$_default_git"
+ask VAR_EMAIL     "Git / user email (userEmail)"        "$_default_email"                validate_email
 ask VAR_HOSTNAME  "Machine hostname"                    "$_default_hostname" validate_hostname
 ask VAR_KEYBOARD  "Keyboard layout (us, de, us,de, ...)" "$_default_keyboard" validate_keyboard
 ask VAR_TIMEZONE  "Timezone (e.g. Europe/Berlin)"       "$_default_tz"   validate_timezone
 ask VAR_CITY      "City (display only)"                 "$_default_city"
-ask VAR_TERMINAL  "Default terminal emulator"           "foot"            validate_terminal
-ask VAR_FM        "Default file manager"                "thunar"          validate_filemanager
+ask VAR_TERMINAL  "Default terminal emulator"           "$_default_terminal"            validate_terminal
+ask VAR_FM        "Default file manager"                "$_default_fm"          validate_filemanager
 ask VAR_DESKTOP_SHELL "Desktop shell (caelestia / noctalia / dank)" "$_default_desktop_shell" validate_desktop_shell
 
 echo ""
@@ -402,7 +479,10 @@ echo -e "  fileManager   = ${GREEN}${VAR_FM}${RESET}"
 echo -e "  desktopShell  = ${GREEN}${VAR_DESKTOP_SHELL}${RESET}"
 echo ""
 read -rp "$(echo -e "${BOLD}Look good? Proceed? [Y/n] ${RESET}")" _ok
-[[ "${_ok,,}" =~ ^(n|no)$ ]] && die "Aborted. No files have been modified."
+if [[ "${_ok,,}" =~ ^(n|no)$ ]]; then
+  info "Opening an editor to adjust your variables before writing vars.nix."
+  _edit="y"
+fi
 
 # Write vars.nix ---------------------------------------------------------------
 VARS_FILE="$NIXOS_DIR/vars.nix"
@@ -416,7 +496,10 @@ escape_nix_string() {
   printf '%s' "$value"
 }
 
-cat > "$VARS_FILE" << VARSNIX
+# Build the vars content into a temporary file so the user can edit it before
+# it replaces the system file.
+TMP_VARS="/tmp/vars.nix.new.$$"
+cat > "$TMP_VARS" << VARSNIX
 # vars.nix - Global variables shared by NixOS modules and home-manager.
 # Generated by install.sh on $(date).
 # Edit this file to personalise the system without touching module internals.
@@ -449,6 +532,17 @@ cat > "$VARS_FILE" << VARSNIX
 }
 VARSNIX
 
+# Offer the user a chance to edit the generated file interactively
+if [[ -z "${_edit:-}" ]]; then
+  read -rp "$(echo -e "${BOLD}Edit vars.nix now? [y/N] ${RESET}")" _edit
+fi
+if [[ "${_edit,,}" =~ ^(y|yes)$ ]]; then
+  : "${EDITOR:=nano}"
+  $EDITOR "$TMP_VARS"
+fi
+
+# Move the temp file into place
+mv "$TMP_VARS" "$VARS_FILE"
 success "vars.nix written to ${VARS_FILE}"
 
 # ==============================================================================
