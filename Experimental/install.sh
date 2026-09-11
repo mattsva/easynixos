@@ -1,3 +1,12 @@
+  _existing_desktop_shell=$(sed -n 's/^[[:space:]]*desktopShell[[:space:]]*=[[:space:]]*"\([^\"]*\)".*/\1/p' "$NIXOS_DIR/vars.nix" | head -n 1 || true)
+  _existing_email=$(sed -n 's/^[[:space:]]*userEmail[[:space:]]*=[[:space:]]*"\([^\"]*\)".*/\1/p' "$NIXOS_DIR/vars.nix" | head -n 1 || true)
+  _existing_keyboard=$(sed -n 's/^[[:space:]]*keyboardLayout[[:space:]]*=[[:space:]]*"\([^\"]*\)".*/\1/p' "$NIXOS_DIR/vars.nix" | head -n 1 || true)
+  if [[ -n "$_existing_email" ]]; then
+    _default_email="$_existing_email"
+  fi
+  if [[ -n "$_existing_keyboard" ]]; then
+    _default_keyboard="$_existing_keyboard"
+  fi
 #!/usr/bin/env bash
 # ==============================================================================
 #  install.sh — Installer for mattsva/easynixos
@@ -25,6 +34,8 @@ header() {
 REPO_URL="https://github.com/mattsva/easynixos.git"
 NIXOS_DIR="/etc/nixos"
 REPO_NAME="easynixos"
+# Default installer version shown in banner; prefers tag when available.
+INSTALLER_VERSION="alpha-0.0.2"
 
 # ==============================================================================
 #  0. Root check
@@ -75,11 +86,18 @@ cat << 'BANNER'
 BANNER
 echo -e "${RESET}"
 
+# Discover the checked-out repo version as soon as it is available so the banner shows
+# the active installer revision instead of only a generic placeholder.
+if git -C "$NIXOS_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  INSTALLER_VERSION=$(git -C "$NIXOS_DIR" describe --tags --always --dirty 2>/dev/null || git -C "$NIXOS_DIR" rev-parse --short HEAD 2>/dev/null || echo "dev")
+fi
+
 echo -e "  This installer will:\n"
 echo -e "  ${CYAN}1.${RESET} Clone or update the config repo into ${BOLD}/etc/nixos${RESET}"
 echo -e "  ${CYAN}2.${RESET} Ask you for your personal variables (${BOLD}vars.nix${RESET})"
 echo -e "  ${CYAN}3.${RESET} Generate ${BOLD}hardware-configuration.nix${RESET} for this machine"
 echo -e "  ${CYAN}4.${RESET} Run ${BOLD}nixos-rebuild switch --flake /etc/nixos#nixos${RESET}\n"
+echo -e "  ${BOLD}Current installer version:${RESET} ${GREEN}${INSTALLER_VERSION}${RESET}\n"
 
 read -rp "$(echo -e "${BOLD}Continue? [Y/n] ${RESET}")" _confirm
 [[ "${_confirm,,}" =~ ^(n|no)$ ]] && die "Aborted by user."
@@ -115,6 +133,51 @@ if is_our_repo "$NIXOS_DIR"; then
 fi
 
 # Decide what to do ------------------------------------------------------------
+# Helper: attempt a fast-forward pull, and offer interactive resolutions when
+# branches have diverged (merge, rebase, reset, or skip).
+attempt_pull_with_resolution() {
+  local dir="$1"
+
+  # Backup user's vars.nix (use unique name if one already exists)
+  local bak="/tmp/vars.nix.bak"
+  if [[ -f "$bak" ]]; then
+    bak="/tmp/vars.nix.bak.$$"
+  fi
+  if [[ -f "$dir/vars.nix" ]]; then
+    cp "$dir/vars.nix" "$bak"
+    info "Backed up vars.nix to $bak"
+    # If vars.nix is tracked, restore the committed copy to avoid merge conflicts
+    if git -C "$dir" ls-files --error-unmatch vars.nix >/dev/null 2>&1; then
+      git -C "$dir" checkout -- vars.nix >/dev/null 2>&1 || true
+    fi
+  fi
+
+  restore_vars() {
+    if [[ -f "$bak" ]]; then
+      mv "$bak" "$dir/vars.nix"
+      info "Restored your vars.nix."
+    fi
+  }
+
+  if git -C "$dir" pull --ff-only origin main; then
+    success "Repository updated to $(git -C "$dir" rev-parse --short HEAD)."
+    restore_vars
+    return 0
+  fi
+  warn "Fast-forward pull failed: local and remote branches have diverged."
+  warn "Attempting automatic merge (preserving vars.nix)."
+  # Try a non-interactive merge first; if it fails, fall back to resetting
+  if git -C "$dir" merge --no-edit origin/main; then
+    success "Merged origin/main into local ($(git -C "$dir" rev-parse --short HEAD))."
+    restore_vars
+  else
+    warn "Automatic merge failed; resetting local branch to origin/main to ensure a clean state."
+    git -C "$dir" reset --hard origin/main
+    success "Reset local branch to origin/main ($(git -C \"$dir\" rev-parse --short HEAD))."
+    restore_vars
+  fi
+}
+
 if $NIXOS_IS_REPO; then
   # Already in place — check for updates
   info "Checking for upstream updates…"
@@ -135,8 +198,7 @@ if $NIXOS_IS_REPO; then
         cp "$NIXOS_DIR/vars.nix" /tmp/vars.nix.bak
         info "Backed up vars.nix to /tmp/vars.nix.bak"
       fi
-      git -C "$NIXOS_DIR" pull --ff-only origin main
-      success "Repository updated to $(git -C "$NIXOS_DIR" rev-parse --short HEAD)."
+      attempt_pull_with_resolution "$NIXOS_DIR"
       # Restore vars.nix if it was backed up
       if [[ -f /tmp/vars.nix.bak ]]; then
         cp /tmp/vars.nix.bak "$NIXOS_DIR/vars.nix"
@@ -155,8 +217,7 @@ elif [[ -n "$LOCAL_CANDIDATE" ]]; then
   LOCAL_HASH=$(git -C "$LOCAL_CANDIDATE" rev-parse HEAD)
   REMOTE_HASH=$(git -C "$LOCAL_CANDIDATE" rev-parse origin/main)
   if [[ "$LOCAL_HASH" != "$REMOTE_HASH" ]]; then
-    git -C "$LOCAL_CANDIDATE" pull --ff-only origin main
-    success "Updated to $(git -C "$LOCAL_CANDIDATE" rev-parse --short HEAD)."
+    attempt_pull_with_resolution "$LOCAL_CANDIDATE"
   fi
 
   # Back up existing /etc/nixos if needed
@@ -275,29 +336,83 @@ validate_filemanager() {
   return 1
 }
 
+validate_hostname() {
+  if [[ ! "$1" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]]; then
+    warn "Invalid hostname '${1}'. Use letters, digits, dots or hyphens; must start with a letter or digit."
+    return 1
+  fi
+}
+
+validate_keyboard() {
+  if [[ ! "$1" =~ ^[A-Za-z0-9,_-]+(,[A-Za-z0-9,_-]+)*$ ]]; then
+    warn "Invalid keyboard layout '${1}'. Common examples: us, de, us,de, us,fr"
+    return 1
+  fi
+}
+
+validate_desktop_shell() {
+  local allowed=("caelestia" "noctalia" "dank" "end4-dots" "end4")
+  for s in "${allowed[@]}"; do
+    [[ "$s" == "$1" ]] && return 0
+  done
+  warn "Unknown desktop shell '${1}'. Choose: ${allowed[*]} (dank = DMS; end4 is alias for end4-dots)."
+  return 1
+}
+
 # Detect sensible defaults from the running system where possible
 _default_user="${SUDO_USER:-$(getent passwd 1000 2>/dev/null | cut -d: -f1)}"
 _default_user="${_default_user:-nixos}"
 _default_tz=$(timedatectl show --property=Timezone --value 2>/dev/null || echo "Europe/London")
 _default_city=$(echo "$_default_tz" | cut -d'/' -f2 | tr '_' ' ')
+_default_hostname=$(hostnamectl --static 2>/dev/null || hostname 2>/dev/null || echo "nixos")
+_default_keyboard=$(localectl --no-pager status 2>/dev/null | awk -F': ' '/X11 Layout|VC Keymap/ {print $2; exit}' || true)
+_default_keyboard="${_default_keyboard:-us}"
+_default_desktop_shell="caelestia"
+if [[ -f "$NIXOS_DIR/vars.nix" ]]; then
+  _existing_desktop_shell=$(sed -n 's/^[[:space:]]*desktopShell[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$NIXOS_DIR/vars.nix" | head -n 1 || true)
+  _existing_email=$(sed -n 's/^[[:space:]]*userEmail[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$NIXOS_DIR/vars.nix" | head -n 1 || true)
+  if [[ -n "$_existing_desktop_shell" ]]; then
+    _default_desktop_shell="$_existing_desktop_shell"
+  fi
+  if [[ -n "$_existing_email" ]]; then
+    _default_email="$_existing_email"
+  fi
+fi
 
 ask VAR_USERNAME  "System username (userName)"          "$_default_user"  validate_username
 ask VAR_GIT_NAME  "Git display name (gitName)"          "$VAR_USERNAME"
-ask VAR_EMAIL     "Git / user email (userEmail)"        ""                validate_email
+_default_email="${_default_email:-}"
+ask VAR_EMAIL     "Git / user email (userEmail)"        "$_default_email"                validate_email
+ask VAR_HOSTNAME  "Machine hostname"                    "$_default_hostname" validate_hostname
+ask VAR_KEYBOARD  "Keyboard layout (us, de, us,de, ...)" "$_default_keyboard" validate_keyboard
 ask VAR_TIMEZONE  "Timezone (e.g. Europe/Berlin)"       "$_default_tz"   validate_timezone
 ask VAR_CITY      "City (display only)"                 "$_default_city"
 ask VAR_TERMINAL  "Default terminal emulator"           "foot"            validate_terminal
 ask VAR_FM        "Default file manager"                "thunar"          validate_filemanager
+# Show 'end4' as the user-facing default when the canonical value is 'end4-dots'.
+display_default_desktop_shell="$_default_desktop_shell"
+if [[ "${display_default_desktop_shell}" == "end4-dots" ]]; then
+  display_default_desktop_shell="end4"
+fi
+ask VAR_DESKTOP_SHELL "Desktop shell (caelestia / noctalia / dank / end4)" "${display_default_desktop_shell}" validate_desktop_shell
+
+# Normalize user-friendly alias 'end4' to the canonical 'end4-dots' used by configs.
+if [[ "${VAR_DESKTOP_SHELL}" == "end4" ]]; then
+  VAR_DESKTOP_SHELL="end4-dots"
+fi
 
 echo ""
 echo -e "  ${BOLD}Summary of your choices:${RESET}"
-echo -e "  userName    = ${GREEN}${VAR_USERNAME}${RESET}"
-echo -e "  gitName     = ${GREEN}${VAR_GIT_NAME}${RESET}"
-echo -e "  userEmail   = ${GREEN}${VAR_EMAIL}${RESET}"
-echo -e "  timezone    = ${GREEN}${VAR_TIMEZONE}${RESET}"
-echo -e "  city        = ${GREEN}${VAR_CITY}${RESET}"
-echo -e "  terminal    = ${GREEN}${VAR_TERMINAL}${RESET}"
-echo -e "  fileManager = ${GREEN}${VAR_FM}${RESET}"
+echo -e "  userName      = ${GREEN}${VAR_USERNAME}${RESET}"
+echo -e "  gitName       = ${GREEN}${VAR_GIT_NAME}${RESET}"
+echo -e "  userEmail     = ${GREEN}${VAR_EMAIL}${RESET}"
+echo -e "  hostname      = ${GREEN}${VAR_HOSTNAME}${RESET}"
+echo -e "  keyboard      = ${GREEN}${VAR_KEYBOARD}${RESET}"
+echo -e "  timezone      = ${GREEN}${VAR_TIMEZONE}${RESET}"
+echo -e "  city          = ${GREEN}${VAR_CITY}${RESET}"
+echo -e "  terminal      = ${GREEN}${VAR_TERMINAL}${RESET}"
+echo -e "  fileManager   = ${GREEN}${VAR_FM}${RESET}"
+echo -e "  desktopShell  = ${GREEN}${VAR_DESKTOP_SHELL}${RESET}"
 echo ""
 read -rp "$(echo -e "${BOLD}Look good? Proceed? [Y/n] ${RESET}")" _ok
 [[ "${_ok,,}" =~ ^(n|no)$ ]] && die "Aborted. No files have been modified."
@@ -323,6 +438,9 @@ cat > "$VARS_FILE" << VARSNIX
   userEmail   = "$(escape_nix_string "$VAR_EMAIL")";
   gitName     = "$(escape_nix_string "$VAR_GIT_NAME")";
 
+  hostName       = "$(escape_nix_string "$VAR_HOSTNAME")";
+  keyboardLayout = "$(escape_nix_string "$VAR_KEYBOARD")";
+
   location = {
     timezone = "$(escape_nix_string "$VAR_TIMEZONE")";
     city     = "$(escape_nix_string "$VAR_CITY")";
@@ -336,7 +454,7 @@ cat > "$VARS_FILE" << VARSNIX
 
   # Default browser and desktop settings used by the active modules.
   browser      = "librewolf";
-  desktopShell = "caelestia";
+  desktopShell = "$(escape_nix_string "$VAR_DESKTOP_SHELL")";
   hyprConfig   = "hyprlang";
 
   wallpaperDir  = "/home/$(escape_nix_string "$VAR_USERNAME")/Pictures/Wallpapers";
@@ -395,19 +513,61 @@ fi
 # ==============================================================================
 header "Step 5 — Building NixOS"
 
+# Rebuilds are performed against the checked-out repo in /etc/nixos. If that tree was
+# created or moved by a different user or from a backup, it may not be writable by the
+# user doing the rebuild. Fix the ownership/permissions here before invoking nixos-rebuild.
+if [[ -d "$NIXOS_DIR" ]]; then
+  info "Ensuring the NixOS config tree is writable for the rebuild…"
+  chown -R root:root "$NIXOS_DIR"
+  chmod -R u+rwX,go+rX "$NIXOS_DIR"
+fi
+
 echo -e "  About to run:"
-echo -e "  ${BOLD}nixos-rebuild switch --flake ${NIXOS_DIR}#nixos${RESET}\n"
+echo -e "  ${BOLD}sudo nixos-rebuild switch --flake ${NIXOS_DIR}#<target>${RESET}\n"
 echo -e "  ${YELLOW}This will download all flake inputs on first run."
 echo -e "  It can take quite a while — grab a coffee. ☕${RESET}\n"
 
 read -rp "$(echo -e "${BOLD}Start the build now? [Y/n] ${RESET}")" _build
 if [[ "${_build,,}" =~ ^(n|no)$ ]]; then
   warn "Build skipped. Run manually when ready:"
-  echo -e "  sudo nixos-rebuild switch --flake /etc/nixos#nixos\n"
+  echo -e "  sudo nixos-rebuild switch --flake /etc/nixos#<target>\n"
   exit 0
 fi
 
-nixos-rebuild switch --flake "${NIXOS_DIR}#nixos"
+# Determine the best nixosConfiguration target in the flake.
+target_name="${VAR_HOSTNAME:-nixos}"
+# Prefer a sane default when host name is unset or 'unknown'
+if [[ -z "${target_name}" || "${target_name}" == "unknown" ]]; then
+  target_name="nixos"
+fi
+
+configs_json="$(nix flake show --json "${NIXOS_DIR}" 2>/dev/null || true)"
+if [[ -n "${configs_json}" ]]; then
+  available=$(printf '%s' "${configs_json}" | python - <<'PY'
+import sys, json
+try:
+  d=json.load(sys.stdin)
+  keys=list(d.get('nixosConfigurations', {}).keys())
+  print(' '.join(keys))
+except Exception:
+  pass
+PY
+)
+  if [[ -n "${available}" ]]; then
+    if printf '%s' " ${available} " | grep -q " ${target_name} "; then
+      : # target_name is valid
+    elif printf '%s' " ${available} " | grep -q " nixos "; then
+      target_name="nixos"
+    else
+      # pick first available
+      target_name="$(printf '%s' "${available}" | awk '{print $1}')"
+    fi
+  fi
+fi
+
+echo -e "  Selected flake target: ${BOLD}${target_name}${RESET}\n"
+
+sudo nixos-rebuild switch --flake "${NIXOS_DIR}#${target_name}"
 
 # ==============================================================================
 #  Done
@@ -418,7 +578,7 @@ cat << 'DONE'
   ╔══════════════════════════════════════════════╗
   ║   ✓  Installation complete!                  ║
   ║                                              ║
-  ║   Reboot to enjoy Hyprland + Noctalia Shell  ║
+  ║   Reboot to enjoy your new NixOS system!     ║
   ╚══════════════════════════════════════════════╝
 DONE
 echo -e "${RESET}"
