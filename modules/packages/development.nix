@@ -18,7 +18,7 @@
     dev.enable = false;
     doc.enable = false;
     man.enable = false;
-    man.generateCaches = false;
+    man.cache.enable = false;
     nixos.enable = false;
   };
 
@@ -32,7 +32,7 @@
     # VSCodium: Open-source VS Code without Microsoft telemetry.
     # Keep VSCodium and skip the redundant Microsoft build.
     vscodium
-    # vscode  # Uncomment only if you specifically need the Microsoft build
+    vscode  # Uncomment only if you specifically need the Microsoft build
 
     # Helix: modal editor with built-in language-server support.
     helix
@@ -233,7 +233,7 @@
   # Load time depends on RAM. Keep total under your VRAM capacity.
   # Current selection: ~13-15GB total (fits on modern GPUs).
   services.ollama = {
-    enable = true; # re-enabled per user request
+    enable = false; # disabled by default to avoid heavy service failures during install
     package = pkgs.ollama-cuda; # keep CUDA package if you have NVIDIA GPU
 
     # Models to preload on startup. Comment out unused models to free VRAM.
