@@ -10,12 +10,15 @@
 #
 # The creator (mattsva) assumes no liability for misuse, damage, or legal consequences
 # resulting from the use of these tools.
+#
+# NOTE: These tools are intentionally opt-in via vars.securityTools because they are
+# powerful and not needed on every machine. Set vars.securityTools = true in your
+# vars.local.nix to enable them.
 # ------------------------------------------------------------------------------------------------------------------------
-{ pkgs, ... }:
+{ pkgs, vars, ... }:
 
 {
-  environment.systemPackages = with pkgs; [
-
+  environment.systemPackages = (if vars.securityTools then with pkgs; [
     # Network scanning & discovery ---------------------------------------------------------------------------------------
     nmap           # port scanner and host discovery (+ NSE scripting)
     masscan        # ultra-fast port scanner
@@ -65,8 +68,8 @@
     steghide       # steganography tool
     exiftool       # read/write metadata from files
 
-    # Burp Suite (via Flatpak - declared in services.nix) ----------------------------------------------------------------
+    # Burp Suite (via Flatpak - declared in base.nix) ----------------------------------------------------------------
     # Burp Suite Community is installed as a Flatpak for easy updates.
     # Launch with: flatpak run net.portswigger.BurpSuite-Community
-  ];
+  ] else [ ]);
 }

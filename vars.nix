@@ -1,43 +1,48 @@
-# vars.nix - Global variables shared by NixOS modules and home-manager.
-# Edit this file to personalise the system without touching module internals.
+# vars.local.nix — ACTUAL VALUES (git-ignored)
+# ------------------------------------------------------------------------------------------------------------------------
+# This file holds your real machine-specific settings. It is NOT committed.
+# Copy from vars.nix (the example template) when adding new options.
+# ------------------------------------------------------------------------------------------------------------------------
 {
-  # Replace these example values before deploying.
-  userName = "nixos";
-  userEmail = "user@example.com";
+  userName = "mattsva";
+  userEmail = "mattsva@proton.me";
+  gitName = "mattsva";
 
-  gitName = "NixOS User";
-
-  hostName = "nixos";
+  hostName = "unknown";
   keyboardLayout = "us";
 
   location = {
-    timezone = "Etc/UTC";
-    city     = "Example City";
+    timezone = "Europe/Berlin";
+    city = "Berlin";
   };
 
-  # Default terminal emulator used by Hyprland keybinds, Noctalia launcher, etc.
-  terminal = "foot";
+  terminal = "kitty";
+  fileManager = "nemo";
 
-  # Default file manager
-  fileManager = "thunar";
-
-  # Wallpaper used to seed hyprpaper, waypaper, and matugen.
-  wallpaperDir  = "/home/nixos/Pictures/Wallpapers";
+  wallpaperDir  = "/home/mattsva/Pictures/Wallpapers";
   wallpaperFile = "wallpaper.jpg";
 
-  # Default browser (privacy-focused). Set as the XDG default in hosts/nixos/default.nix
-  # and used by Hyprland/shell keybinds ($mainMod, B).
   browser = "librewolf";
 
-  # Desktop shell selection. Options:
-  #  - "noctalia"    -> Noctalia Shell
-  #  - "dank"        -> DankMaterialShell (DMS)
-  #  - "caelestia"   -> Caelestia Shell (quickshell-based, minimal/squarish default look)
-  #  - "end4-dots"   -> end4-dots / end4-inspired Hyprland look and launcher flow
-  desktopShell = "caelestia";
+  desktopShell = "noctalia";
+  hyprConfig = "hyprlua";
 
-  # Hyprland config format selection. Options:
-  #  - "hyprlang"      -> current hyprlang format
-  #  - "hyprlandlua"   -> Hyprland Lua-based config (if your hyprland/home-module supports it)
-  hyprConfig = "hyprlang";
+  autoUpdateEnabled = true;
+  autoUpdateInterval = "weekly";
+  autoUpdateTime = "03:00";
+
+  securityTools = false;
+
+  nvidiaBusId = "PCI:1:0:0";
+  intelBusId  = "PCI:0:2:0";
+
+  monitors = [
+    {
+      output = "eDP-1";
+      mode = "1920x1080@144";
+      position = "0x0";
+      scale = "1";
+      transform = "0";
+    }
+  ];
 }

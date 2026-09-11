@@ -24,14 +24,14 @@ in
     if hasDankHomeModule then [ inputs.dankmaterials.homeModules.dank-material-shell ] else [ ./dankmaterial.nix ]
   )));
 
-  home.stateVersion  = "25.05";
+  home.stateVersion  = "26.05";
   home.username      = vars.userName;
   home.homeDirectory = "/home/${vars.userName}";
 
   xdg.enable                       = true;
   xdg.userDirs.enable              = true;
   xdg.userDirs.createDirectories   = true;
-  xdg.userDirs.setSessionVariables = true;
+  xdg.userDirs.setSessionVariables = false;
 
   gtk = {
     enable = true;
@@ -60,4 +60,16 @@ in
   };
 
   programs.home-manager.enable = true;
+
+  # ── Kitty terminal ──────────────────────────────────────────────────────
+  # Noctalia owns kitty.conf generation (colors from wallpaper).
+  # We set the font via a conf.d drop-in to avoid conflicting with Noctalia.
+  home.file."\.config/kitty/conf.d/font.conf".text = ''
+    font family LiterationMono Nerd Font
+    bold_font auto
+    italic_font auto
+  '';
+
+  # ── Fastfetch ──────────────────────────────────────────────────────────
+  home.file.".config/fastfetch".source = ./fastfetch;
 }

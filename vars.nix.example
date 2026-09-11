@@ -1,0 +1,89 @@
+# vars.nix — EXAMPLE TEMPLATE (committed)
+# ------------------------------------------------------------------------------------------------------------------------
+# This file documents all available configuration options with example values.
+#
+# For your actual machine settings, copy this file to vars.local.nix and edit the
+# values there. vars.local.nix is git-ignored and holds your real configuration.
+#
+# The flake automatically uses vars.local.nix when it exists, falling back to this
+# example file if it doesn't (useful for fresh clones or CI).
+#
+# To set up a new machine:
+#   1. Copy vars.nix.example to vars.local.nix: cp vars.nix.example vars.local.nix
+#   2. Edit vars.local.nix with your personal values
+#   3. Run: nixos-rebuild switch --flake /etc/nixos#nixos
+# ------------------------------------------------------------------------------------------------------------------------
+{
+  # Your Linux username (must match the user account created by user.nix)
+  userName = "username";
+
+  # Your email (used for Git config and any package that asks for it)
+  userEmail = "user@example.com";
+
+  # Display name for Git commits
+  gitName = "Your Name";
+
+  # Machine hostname (what `hostname` returns)
+  hostName = "your-hostname";
+  keyboardLayout = "us";
+
+  location = {
+    # IANA timezone, e.g. "Europe/Berlin", "America/New_York", "Asia/Tokyo"
+    timezone = "Etc/UTC";
+    city     = "Your City";
+  };
+
+  # Default terminal emulator (foot, alacritty, kitty, etc.)
+  terminal = "foot";
+
+  # Default file manager (nemo, thunar, pcmanfm, dolphin, etc.)
+  fileManager = "nemo";
+
+  # Wallpaper directory and filename (used by hyprpaper / waypaper / matugen)
+  wallpaperDir  = "/home/username/Pictures/Wallpapers";
+  wallpaperFile = "wallpaper.jpg";
+
+  # Default browser — set as XDG default and used by Hyprland keybind $mainMod+B
+  browser = "librewolf";
+
+  # Desktop shell selection.
+  #   "noctalia"  — Noctalia Shell
+  #   "dank"      — DankMaterialShell (DMS)
+  #   "caelestia" — Caelestia Shell (quickshell-based)
+  #   "end4-dots" — end4-dots / end4-inspired Hyprland
+  desktopShell = "caelestia";
+
+  # Hyprland config format.
+  #   "hyprlang"  — legacy Hyprscript format (default in older configs)
+  #   "hyprlua"   — Lua-based config (requires configType = "lua" in home/hyprland.nix)
+  hyprConfig = "hyprlua";
+
+  # Automatic NixOS configuration updates via systemd timer.
+  # The timer runs `nix flake update` + `nixos-rebuild switch` on the stable branch.
+  autoUpdateEnabled   = true;   # set to false to disable
+  autoUpdateInterval  = "weekly";
+  autoUpdateTime      = "03:00";
+
+  # Security/pentest tools (nmap, metasploit, hashcat, aircrack-ng, ghidra, etc.).
+  # These tools are powerful and have legitimate uses for security research, CTF,
+  # and education, but are not needed on every machine. Set to true to install.
+  securityTools = false;
+
+  # ====================================================================================================================
+  # MACHINE-SPECIFIC HARDWARE CONFIGURATION
+  # ====================================================================================================================
+  # These values are specific to your hardware. Adjust them for your machine.
+  # NVIDIA PRIME configuration (for NVIDIA GPU laptops with Intel iGPU):
+  #   Verify bus IDs with: lspci | grep -E "VGA|3D"
+  nvidiaBusId = "PCI:1:0:0";      # NVIDIA GPU bus ID
+  intelBusId  = "PCI:0:2:0";      # Intel iGPU bus ID
+
+  # Monitor configuration for Hyprland.
+  # Adjust output names, modes, positions to match your displays.
+  # Find output names with: hyprctl monitors
+  monitors = [
+    { output = "HDMI-A-1"; mode = "1920x1080@160"; position = "0x0";           scale = "1"; transform = "0"; }
+    { output = "DP-1";     mode = "1920x1080@60";  position = "1920x0";        scale = "1"; transform = "1"; }
+    { output = "eDP-1";    mode = "1920x1080@144"; position = "3000x420";      scale = "1"; transform = "0"; }
+  ];
+}

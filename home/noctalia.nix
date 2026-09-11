@@ -4,8 +4,8 @@
 {
   programs.noctalia = {
     enable  = true;
-    package = inputs.noctalia.packages.${pkgs.system}.default;
-    systemd.enable = true;
+    package = pkgs.noctalia;
+    systemd.enable = false;
 
     settings = {
       shell = {
@@ -25,7 +25,6 @@
         polkit_agent           = true;
         telemetry_enabled      = false;
         time_format            = "{:%H:%M}";
-        ui_scale               = 0.85;
       };
 
       shell.animation = {
@@ -120,7 +119,7 @@
       theme.templates = {
         enable_builtin_templates = true;
         enable_community_templates = true;
-        builtin_ids = [ "alacritty" "btop" "cava" "emacs" "foot" "gtk3" "gtk4" "ghostty" "helix" "hyprland" "kcolorscheme" "kitty" "labwc" "mango" "niri" "qt" "scroll" "starship" "sway" "wezterm" ];
+        builtin_ids = [ "alacritty" "btop" "cava" "emacs" "foot" "gtk3" "gtk4" "ghostty" "helix" "hyprland" "kcolorscheme" "labwc" "mango" "niri" "qt" "scroll" "starship" "sway" "wezterm" ];
       };
 
       notification = {

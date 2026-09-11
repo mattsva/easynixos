@@ -12,6 +12,7 @@ result-*
 # Local secrets and environment files
 .env
 .env.*
+vars.local.nix
 !.env.example
 secrets/
 
@@ -21,3 +22,9 @@ secrets/
 .DS_Store
 Thumbs.db
 *~
+
+# Note: vars.nix and hardware-configuration.nix are NOT gitignored.
+# Nix flakes require all imported paths to be tracked by Git.
+# vars.nix is the committed example template (fallback if vars.local.nix absent).
+# hardware-configuration.nix must exist and be tracked for flake evaluation.
+# Personal overrides go in vars.local.nix (git-ignored above).

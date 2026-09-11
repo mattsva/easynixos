@@ -40,6 +40,6 @@
 
     opentabletdriver
 
-    kicad
+    # kicad
   ];
 }

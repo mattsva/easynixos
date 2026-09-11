@@ -69,21 +69,34 @@
   };
 
   # ====================================================================================================================
-  # LOGIND
+  # PKI / CERTIFICATES
   # ====================================================================================================================
-  services.logind.settings.Login = {
-      HandlePowerKey = "poweroff";
-      HandleRebootKey = "reboot";
+  # Global CA certificate bundle for system-wide TLS verification.
+  # This ensures all applications (curl, python requests, etc.) use the same
+  # trusted CA bundle. The cacert derivation provides the Mozilla CA bundle.
+  security.pki.certificateFiles = [
+    "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+  ];
+
+  # ====================================================================================================================
+  # HARDENED CUSTOM SYSTEMD SERVICES
+  # ====================================================================================================================
+  # Apply service-level hardening to custom systemd services.
+  # These are systemd service options (serviceConfig), not global security.* options.
+  systemd.services.easynixos-auto-update.serviceConfig = {
+    ProtectSystem = "strict";
+    ProtectHome = "true";
+    PrivateTmp = true;
+    NoNewPrivileges = true;
+    ProtectKernelLogs = true;
+    ProtectHostname = true;
+    ProtectKernelTunables = true;
+    RestrictNamespaces = true;
+    RestrictRealtime = true;
+    RestrictSUIDSGID = true;
+    MemoryDenyWriteExecute = true;
   };
 
-  # ====================================================================================================================
-  # USER ISOLATION (FIXED: removed invalid option)
-  # ====================================================================================================================
-  #security.protectKernelLogs = true;
-  #security.protectHostname = true;
-  #security.protectKernelTunables = true;
-  #security.restrictNamespaces = true;
-
-  # NOTE: removed invalid:
-  # security.protectControlGroups (does NOT exist in nixpkgs)
+  # If additional custom services exist (disk-space-check, nix-store-verify, cleanup-tmp),
+  # apply similar hardening following the pattern above.
 }

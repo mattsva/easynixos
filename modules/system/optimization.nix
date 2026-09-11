@@ -1,35 +1,19 @@
 # modules/system/optimization.nix
-{ pkgs, ... }:
+# CPU-optimized compilation overlay — disabled by default to keep builds fast and memory-safe.
+# Enable by flipping `useOptimisedStdenv` to true below.
+{ pkgs, lib, ... }:
+let
+  useOptimisedStdenv = false;  # <-- set to true to enable -march=native -O3 on all C/C++
+in {
+  nixpkgs.overlays = lib.optional useOptimisedStdenv (final: prev: {
+    stdenv = prev.withCFlags [
+      "-march=native"
+      "-mtune=native"
+      "-O3"
+      "-pipe"
+    ] prev.stdenv;
+  });
 
-{
-  nix.settings = {
-    cores = 0;
-    max-jobs = "auto";
-    keep-going = true;
-
-    # Build everything locally (no binary substitutes)
-    substituters = [ ];
-    substitute = false;
-  };
-
-  nixpkgs.config = {
-    allowBroken = true;
-    allowUnfree = true;
-  };
-
-  # CPU-optimized compilation for all C/C++ builds
-  nixpkgs.overlays = [
-    (final: prev: {
-      stdenv = prev.withCFlags [
-        "-march=native"
-        "-mtune=native"
-        "-O3"
-        "-pipe"
-      ] prev.stdenv;
-    })
-  ];
-
-  # NOTE:
-  # environment.variables is NOT needed for Nix builds anymore.
-  # Keeping it can confuse assumptions, so we avoid it.
+  # NOTE: nix.settings and nixpkgs.config are managed by modules/system/nix.nix.
+  # This file only provides the optional stdenv overlay above.
 }

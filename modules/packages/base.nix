@@ -9,9 +9,9 @@
   # ====================================================================================================================
   # FLATPAK SUPPORT
   # ====================================================================================================================
-  # Flatpak: Container-based application isolation for desktop apps
-  # Flathub: Primary Flatpak repository (Linux App Store)
-  # Pre-installed: Lumi (PDF reader via Flatpak)
+  # Flatpak: Container-based application isolation for desktop apps.
+  # Flathub: Primary Flatpak repository (Linux App Store).
+  # Managed by the nix-flatpak module; Flathub remote is added automatically.
   services.flatpak = {
     enable = true;
 
@@ -23,8 +23,17 @@
     ];
 
     packages = [
-      #"fi.lumi.Lumi"  # Lightweight PDF reader
+      # Minecraft Java Edition
+      { appId = "com.mojang.Minecraft"; origin = "flathub"; }
+      # Burp Suite Community (web security testing)
+      { appId = "net.portswigger.BurpSuite-Community"; origin = "flathub"; }
     ];
+
+    # Keep Flatpak apps up to date automatically
+    update.auto = {
+      enable    = true;
+      onCalendar = "weekly";
+    };
   };
 
   environment.systemPackages = with pkgs; [
@@ -195,6 +204,7 @@
 
     maigret
 
+    kitty
 
     qt6Packages.qt6ct
 #    kdePackages.qt6ct-kde

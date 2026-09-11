@@ -9,6 +9,7 @@
 { pkgs, vars, ... }:
 
 {
+
   # ====================================================================================================================
   # Documentation Settings
   # ====================================================================================================================
@@ -18,7 +19,6 @@
     dev.enable = false;
     doc.enable = false;
     man.enable = false;
-    man.generateCaches = false;
     nixos.enable = false;
   };
 
@@ -32,7 +32,7 @@
     # VSCodium: Open-source VS Code without Microsoft telemetry.
     # Keep VSCodium and skip the redundant Microsoft build.
     vscodium
-    # vscode  # Uncomment only if you specifically need the Microsoft build
+    vscode  # Uncomment only if you specifically need the Microsoft build
 
     # Helix: modal editor with built-in language-server support.
     helix
@@ -206,7 +206,7 @@
     typos
     vale
 
- ];
+  ];
 
   # ====================================================================================================================
   # NVIDIA GPU SETTINGS
@@ -232,27 +232,27 @@
   #
   # Load time depends on RAM. Keep total under your VRAM capacity.
   # Current selection: ~13-15GB total (fits on modern GPUs).
-  services.ollama = {
-    enable = true; # re-enabled per user request
-    package = pkgs.ollama-cuda; # keep CUDA package if you have NVIDIA GPU
+  #services.ollama = {
+  #  enable = false; # disabled by default to avoid heavy service failures during install
+  #  package = pkgs.ollama-cuda; # keep CUDA package if you have NVIDIA GPU
 
     # Models to preload on startup. Comment out unused models to free VRAM.
-    loadModels = [
-      "mistral:latest"           # 7B - Fast, balanced, best for general use
-      "neural-chat:latest"       # 7B - Conversation-optimized
-      "orca-mini:3b"             # 3B - Lightweight, good reasoning
-      "codegemma:latest"         # 7B - Code generation specialist
-      "nomic-embed-text:latest"  # 274M - Text embeddings for search/RAG
-    ];
+#    loadModels = [
+#      "mistral:latest"           # 7B - Fast, balanced, best for general use
+#      "neural-chat:latest"       # 7B - Conversation-optimized
+#      "orca-mini:3b"             # 3B - Lightweight, good reasoning
+#      "codegemma:latest"         # 7B - Code generation specialist
+#      "nomic-embed-text:latest"  # 274M - Text embeddings for search/RAG
+#    ];
 
     # No serviceConfig here — set systemd service options below instead.
-  };
+ # };
 
   # Ensure the generated systemd unit runs as the correct user and has needed env
-  systemd.services.ollama.serviceConfig = {
-    User = vars.userName;
-    Environment = [ "HOME=/home/${vars.userName}" "OLLAMA_NUM_GPU=999" "CUDA_VISIBLE_DEVICES=0" ];
-  };
+ # systemd.services.ollama.serviceConfig = {
+ #   User = vars.userName;
+ #   Environment = [ "HOME=/home/${vars.userName}" "OLLAMA_NUM_GPU=999" "CUDA_VISIBLE_DEVICES=0" ];
+ # };
 
   # ====================================================================================================================
   # OPEN-WEBUI: Web Interface for Ollama
@@ -264,11 +264,11 @@
   # - Model management
   # - Conversation history
   # - API integration
-  services.open-webui = {
-    enable = false; # disabled temporarily to avoid Python build/service failures during debugging
-    port = 8080;
+ # services.open-webui = {
+ #   enable = false; # disabled temporarily to avoid Python build/service failures during debugging
+ #   port = 8080;
     # openaiAPIKey can be set here if integrating with OpenAI alongside Ollama
-  };
+#  };
 
   # ====================================================================================================================
   # SEARX: Private Meta-Search Engine
@@ -330,25 +330,5 @@
     '';
   };
 
-  # ====================================================================================================================
-  # TOR: Privacy-Focused Networking
-  # ====================================================================================================================
-  # Tor client for privacy-respecting network traffic.
-  # Useful for security research, CTF, and privacy-sensitive operations.
-  # Control port: 9051 (with cookie authentication)
-  services.tor = {
-    enable = true;
-    client.enable = true;
-
-    settings = {
-      ControlPort = 9051;
-      CookieAuthentication = true;
-    };
-  };
-
-
-security.pki.certificateFiles = [
-  pkgs.cacert
-];
-
 }
+

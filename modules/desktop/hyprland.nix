@@ -49,16 +49,14 @@
     slurp            # screen region selector
     swappy           # screenshot annotation
     libnotify        # notify-send
-    foot             # fast Wayland terminal (default $terminal)
+    foot             # fast Wayland terminal (fallback)
+    kitty            # GPU-accelerated terminal (default when vars.terminal == "kitty")
     xdg-utils        # xdg-open, xdg-mime, etc.
 
-    # Thunar file manager + gvfs for mounting (MTP, SMB, SFTP, Trash…)
-    thunar
-    thunar-volman
-    thunar-archive-plugin
-    thunar-media-tags-plugin
-    gvfs             # virtual filesystem (required for Thunar mounting)
-    tumbler     # thumbnail service for Thunar
+    # File manager + archive/thumbnail support (Thunar/tumbler unavailable in NixOS 25.11 stable)
+    nemo             # Cinnamon file manager (stable replacement for Thunar)
+    gvfs             # virtual filesystem (MTP, SMB, SFTP, Trash…)
+    file-roller      # archive creation/extraction GUI
 
     # File archive support in Thunar
     file-roller

@@ -29,14 +29,17 @@ sudo nixos-rebuild switch --flake /etc/nixos#nixos
 
 The checked-in hardware file contains no disk identifiers or personal machine data, so it is safe to publish but is not a bootable hardware definition by itself. Generate a hardware file for the target machine before rebuilding; it supplies filesystems, swap, and initrd modules. The installer automates these steps and also enables flakes, but it remains in `Experimental/` because it is interactive and moves or backs up `/etc/nixos`.
 
-At minimum, verify these values in `vars.nix`:
+At minimum, verify these values in `vars.nix` (or `vars.local.nix` for your actual machine):
 
 - `userName`, `userEmail`, and `gitName`
 - `location.timezone`
 - `browser`, `terminal`, and `fileManager`
 - `wallpaperDir` and `wallpaperFile`
-- `desktopShell`: `caelestia`, `noctalia`, or `dank`
+- `desktopShell`: `caelestia`, `noctalia`, `dank`, or `end4-dots`
 - `hyprConfig`: currently `hyprlang` is recommended
+- `securityTools`: set to `true` to install security/pentest tools (nmap, metasploit, etc.)
+- `nvidiaBusId` and `intelBusId`: NVIDIA PRIME bus IDs (verify with `lspci | grep -E "VGA|3D"`)
+- `monitors`: Hyprland monitor configuration (output names, modes, positions)
 
 ## Daily workflow
 
@@ -61,6 +64,7 @@ Set `desktopShell` in `vars.nix` and rebuild. The selected shell is configured i
 - `caelestia` is the current default and uses the Caelestia flake modules.
 - `noctalia` uses the Noctalia package and Home Manager module.
 - `dank` uses DankMaterialShell’s Home Manager module.
+- `end4-dots` uses the end4-dots / end4-inspired Hyprland flow with the same launcher and clipboard conventions.
 
 Hyprland keybindings use the configured terminal, file manager, browser, and shell commands. Monitor definitions in `home/hyprland.nix` are examples for the current machine and should be adjusted for different displays.
 
@@ -72,7 +76,7 @@ SSH and Searx are not enabled by default. Open WebUI is declared but disabled. E
 
 ## Services and packages
 
-The configuration includes PipeWire/Bluetooth, CUPS and common printer drivers, Flatpak with Flathub, Steam and Proton support, Docker, VirtualBox, Ollama with CUDA, offline Kiwix tooling, development toolchains, and security/research utilities. Searx is present but disabled until a local secret is supplied. Several packages are intentionally heavyweight; remove a package group from `hosts/nixos/default.nix` if a smaller installation is desired.
+The configuration includes PipeWire/Bluetooth, CUPS and common printer drivers, Flatpak with Flathub, Steam and Proton support, Docker, VirtualBox, offline Kiwix tooling, development toolchains, and security/research utilities. Searx is present but disabled until a local secret is supplied. Ollama with CUDA support is configured but disabled by default; enable it in `modules/packages/development.nix` after verifying NVIDIA GPU compatibility. Security/pentest tools (nmap, metasploit, hashcat, aircrack-ng, ghidra, etc.) are opt-in via `vars.securityTools = true` in `vars.local.nix`. Several packages are intentionally heavyweight; remove a package group from `hosts/nixos/default.nix` if a smaller installation is desired.
 
 ## Validation
 
