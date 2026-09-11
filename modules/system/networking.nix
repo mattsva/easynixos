@@ -3,11 +3,11 @@
 # Network stack: NetworkManager, firewall, Tailscale overlay network,
 # KDE Connect (phone integration), and OpenFortiVPN (corporate VPN).
 # ------------------------------------------------------------------------------------------------------------------------
-{ config, pkgs, ... }:
+{ config, pkgs, vars, ... }:
 
 {
   # Basic networking -----------------------------------------------------------------------------------------------------
-  networking.hostName = "nixos";
+  networking.hostName = vars.hostName;
 
   networking.networkmanager = {
     enable = true;
@@ -17,7 +17,7 @@
     # NM's connectivity check normally polls a canonical URL (e.g. nmcheck.gnome.org) in the
     # clear on every network change - a small but free metadata leak ("this machine just joined
     # this network"). Off by default; NetworkManager still detects link-up fine without it.
-    connectivity.enable = false;
+    #connectivity.enable = false;
 
     # FortiSSL VPN integration for NetworkManager.
     plugins = with pkgs; [
@@ -32,7 +32,9 @@
   networking.networkmanager.dns = "systemd-resolved";
   services.resolved = {
     enable = true;
-    dnssec = "allow-downgrade";
+    settings = {
+      Resolve.DNSSEC = "allow-downgrade";
+    };
   };
 
   # Tailscale ------------------------------------------------------------------------------------------------------------

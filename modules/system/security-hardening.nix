@@ -71,18 +71,18 @@
   # ====================================================================================================================
   # LOGIND
   # ====================================================================================================================
-  services.logind.extraConfig = ''
-    HandlePowerKey=poweroff
-    HandleRebootKey=reboot
-  '';
+  services.logind.settings.Login = {
+      HandlePowerKey = "poweroff";
+      HandleRebootKey = "reboot";
+  };
 
   # ====================================================================================================================
   # USER ISOLATION (FIXED: removed invalid option)
   # ====================================================================================================================
-  security.protectKernelLogs = true;
-  security.protectHostname = true;
-  security.protectKernelTunables = true;
-  security.restrictNamespaces = true;
+  #security.protectKernelLogs = true;
+  #security.protectHostname = true;
+  #security.protectKernelTunables = true;
+  #security.restrictNamespaces = true;
 
   # NOTE: removed invalid:
   # security.protectControlGroups (does NOT exist in nixpkgs)

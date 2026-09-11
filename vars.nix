@@ -7,6 +7,9 @@
 
   gitName = "NixOS User";
 
+  hostName = "nixos";
+  keyboardLayout = "us";
+
   location = {
     timezone = "Etc/UTC";
     city     = "Example City";
@@ -27,9 +30,10 @@
   browser = "librewolf";
 
   # Desktop shell selection. Options:
-  #  - "noctalia"   -> Noctalia Shell
-  #  - "dank"       -> DankMaterialShell (DMS)
-  #  - "caelestia"  -> Caelestia Shell (quickshell-based, minimal/squarish default look)
+  #  - "noctalia"    -> Noctalia Shell
+  #  - "dank"        -> DankMaterialShell (DMS)
+  #  - "caelestia"   -> Caelestia Shell (quickshell-based, minimal/squarish default look)
+  #  - "end4-dots"   -> end4-dots / end4-inspired Hyprland look and launcher flow
   desktopShell = "caelestia";
 
   # Hyprland config format selection. Options:
