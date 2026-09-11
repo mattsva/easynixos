@@ -6,6 +6,7 @@
 { config, pkgs, inputs, vars, ... }:
 
 let
+  lib = pkgs.lib;
   # Prefer pkgs.system (set by the caller) and fall back to a sensible default.
   system = if pkgs ? system then pkgs.system else "x86_64-linux";
 
@@ -55,13 +56,20 @@ let
 
 in
 {
-  # Add the package(s) only if we successfully found them in the flake (or nixpkgs fallback for dsearch).
-  home.packages = (if havePkg then [ dankPkg ] else [])
-                ++ (if dsearchPkg != null then [ dsearchPkg ] else [])
+  # Do NOT force the main DMS package into the home closure by default —
+  # attempting to build it can pull heavy dependencies (Go toolchain) and
+  # cause the whole system build to fail. Prefer the upstream homeModule
+  # (inputs.dankmaterials.homeModules.dank-material-shell) to configure DMS
+  # when available; here we only add auxiliary packages (dsearch/greeter)
+  # when the flake or nixpkgs exposes them.
+  home.packages = (if dsearchPkg != null then [ dsearchPkg ] else [])
                 ++ (if greeterPkg != null then [ greeterPkg ] else []);
 
-  # Expose a launcher command variable used by hyprland (dms is upstream executable name)
-  home.sessionVariables = {
+  # Expose a launcher command variable used by hyprland when DMS is actually
+  # provided by the upstream flake. We only set this variable when the flake
+  # appears to provide the main DMS package to avoid advertising a launcher
+  # that won't exist.
+  home.sessionVariables = lib.optionalAttrs havePkg {
     DMS_LAUNCHER = "dms";
   };
 
