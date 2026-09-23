@@ -1,6 +1,6 @@
 # home/shell.nix
 # ========================================================================================================================
-# Shell configuration: Fish shell, custom prompt, Atuin history, Direnv, Git setup
+# Shell configuration: Fish shell, custom prompt, Atuin history, Direnv, Git setup, Emacs/DOOM
 # ========================================================================================================================
 { config, pkgs, vars, ... }:
 
@@ -51,9 +51,9 @@
     '';
   };
 
-  # ====================================================================================================================
+  # ========================================================================================================================
   # ATUIN
-  # ====================================================================================================================
+  # ========================================================================================================================
   programs.atuin = {
     enable = true;
     settings = {
@@ -62,17 +62,17 @@
     };
   };
 
-  # ====================================================================================================================
+  # ========================================================================================================================
   # DIRENV
-  # ====================================================================================================================
+  # ========================================================================================================================
   programs.direnv = {
     enable = true;
     nix-direnv.enable = true;
   };
 
-  # ====================================================================================================================
+  # ========================================================================================================================
   # GIT
-  # ====================================================================================================================
+  # ========================================================================================================================
   programs.git = {
     enable = true;
     settings = {
@@ -85,28 +85,38 @@
     };
   };
 
-  # =======================================================================================================================
+  # ========================================================================================================================
   # EMACS / DOOM EMACS
-  # =======================================================================================================================
+  # ========================================================================================================================
   home.packages = [
     pkgs.nerd-fonts.liberation
     pkgs.emacs              # Base Emacs (DOOM Emacs runs on top of this)
   ];
 
-  # DOOM Emacs configuration directory
-  # Note: DOOM Emacs itself is installed via its installer (doom install) or by
-  # cloning the repo. This sets up the directory structure. If you want the full
-  # DOOM Emacs experience, run: git clone https://github.com/doomemacs/doom-emacs
+  # DOOM Emacs configuration directory (.config/emacs) will be created by the
+  # DOOM Emacs installer when you run: git clone https://github.com/doomemacs/doom-emacs
   # ~/.config/emacs && cd ~/.config/emacs && doom install
-  home.file.".config/emacs" = {
-    ensureDir = true;
-    recursive = true;
-    content = ''
-      ; Basic DOOM Emacs initialization
-      ; This is a minimal starter; see https://github.com/doomemacs/doom-emacs
-      ;; -*- lexical-binding: t; -*-
-      (when (featurep 'use-package)
-        (setq use-package-always-ensure-mode t))
+  # No home.file needed here - DOOM manages its own directory structure.
+
+  # Wrapper alias for easy Emacs launch (opens a new frame via emacsclient)
+  # This will start the daemon automatically if it's not running.
+  home.shellAliases = {
+    emacs = "emacsclient -c -a emacs";  # Create new frame, fall back to starting emacs if no daemon
+  };
+
+  # Desktop entry for GUI launch from application menu
+  # Note: DOOM Emacs manages its own ~/.config/emacs directory structure.
+  home.file.".local/share/applications/emacs.desktop" = {
+    text = ''
+      [Desktop Entry]
+      Name=Emacs (DOOM)
+      Comment=DOOM Emacs editor (client to daemon)
+      Exec=emacsclient -c -a emacs
+      Icon=emacs
+      Type=Application
+      Terminal=false
+      Categories=TextEditor;Development;Utility;
+      StartupWMClass=Emacs
     '';
   };
 }
