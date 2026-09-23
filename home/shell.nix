@@ -49,6 +49,14 @@
       direnv hook fish | source
       atuin init fish | source
     '';
+
+    # Emacs daemon auto-start: starts emacs daemon on shell login if not running
+    shellInit = ''
+      # Auto-start Emacs daemon if not running (for DOOM Emacs server/client mode)
+      if test -z "(pgrep -x emacs)"
+        emacs --daemon 2>/dev/null &
+      end
+    '';
   };
 
   # ========================================================================================================================
@@ -105,7 +113,6 @@
   };
 
   # Desktop entry for GUI launch from application menu
-  # Note: DOOM Emacs manages its own ~/.config/emacs directory structure.
   home.file.".local/share/applications/emacs.desktop" = {
     text = ''
       [Desktop Entry]
