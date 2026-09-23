@@ -85,8 +85,28 @@
     };
   };
 
-  # ====================================================================================================================
-  # FONT: LiberationMono Nerd Font
-  # ====================================================================================================================
-  home.packages = [ pkgs.nerd-fonts.liberation ];
+  # =======================================================================================================================
+  # EMACS / DOOM EMACS
+  # =======================================================================================================================
+  home.packages = [
+    pkgs.nerd-fonts.liberation
+    pkgs.emacs              # Base Emacs (DOOM Emacs runs on top of this)
+  ];
+
+  # DOOM Emacs configuration directory
+  # Note: DOOM Emacs itself is installed via its installer (doom install) or by
+  # cloning the repo. This sets up the directory structure. If you want the full
+  # DOOM Emacs experience, run: git clone https://github.com/doomemacs/doom-emacs
+  # ~/.config/emacs && cd ~/.config/emacs && doom install
+  home.file.".config/emacs" = {
+    ensureDir = true;
+    recursive = true;
+    content = ''
+      ; Basic DOOM Emacs initialization
+      ; This is a minimal starter; see https://github.com/doomemacs/doom-emacs
+      ;; -*- lexical-binding: t; -*-
+      (when (featurep 'use-package)
+        (setq use-package-always-ensure-mode t))
+    '';
+  };
 }
