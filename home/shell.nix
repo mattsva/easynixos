@@ -49,14 +49,6 @@
       direnv hook fish | source
       atuin init fish | source
     '';
-
-    # Emacs daemon auto-start: starts emacs daemon on shell login if not running
-    shellInit = ''
-      # Auto-start Emacs daemon if not running (for DOOM Emacs server/client mode)
-      if test -z "(pgrep -x emacs)"
-        emacs --daemon 2>/dev/null &
-      end
-    '';
   };
 
   # ========================================================================================================================
@@ -93,31 +85,35 @@
     };
   };
 
-  # ========================================================================================================================
+  # =======================================================================================================================
   # EMACS / DOOM EMACS
-  # ========================================================================================================================
+  # =======================================================================================================================
   home.packages = [
     pkgs.nerd-fonts.liberation
-    pkgs.emacs              # Base Emacs (DOOM Emacs runs on top of this)
   ];
 
-  # DOOM Emacs configuration directory (.config/emacs) will be created by the
-  # DOOM Emacs installer when you run: git clone https://github.com/doomemacs/doom-emacs
-  # ~/.config/emacs && cd ~/.config/emacs && doom install
-  # No home.file needed here - DOOM manages its own directory structure.
-
-  # Wrapper alias for easy Emacs launch (opens a new frame via emacsclient)
-  # This will start the daemon automatically if it's not running.
-  home.shellAliases = {
-    emacs = "emacsclient -c -a emacs";  # Create new frame, fall back to starting emacs if no daemon
+  # Emacs daemon auto-started by systemd user service — DOOM Emacs connects via emacsclient.
+  # services.emacs from home-manager handles the systemd unit, socket, and auto-start.
+  services.emacs = {
+    enable = true;
+    package = pkgs.emacs;
+    startWithUserSession = true;  # start with default.target (auto on login)
+    client.enable = false;        # we use our own DOOM-branded desktop entry
+    defaultEditor = false;
   };
 
-  # Desktop entry for GUI launch from application menu
+  # Quick-launch aliases — connect to the daemon; start one if it is absent.
+  home.shellAliases = {
+    emacs = "emacsclient -c -a emacs";
+    doom  = "emacsclient -c -a emacs";  # DOOM Emacs shortcut
+  };
+
+  # DOOM Emacs desktop entry — launches a client frame linked to the running daemon.
   home.file.".local/share/applications/emacs.desktop" = {
     text = ''
       [Desktop Entry]
       Name=Emacs (DOOM)
-      Comment=DOOM Emacs editor (client to daemon)
+      Comment=DOOM Emacs — client to auto-running daemon
       Exec=emacsclient -c -a emacs
       Icon=emacs
       Type=Application

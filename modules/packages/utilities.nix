@@ -6,6 +6,8 @@
 { pkgs, ... }:
 
 {
+  
+  services.gnome.gnome-keyring.enable = true;
   environment.systemPackages = with pkgs; [
 
     # ====================================================================================================================
@@ -81,6 +83,21 @@
     # ====================================================================================================================
     # tealdeer: faster/better tldr pages client (already have tldr).
     # Can be used alongside tldr for comparison.
+
+    # ====================================================================================================================
+    # Email Client
+    # ====================================================================================================================
+    # matcha: graphical email client from the NixOS community.
+    matcha
+    libsecret
+    gnome-keyring
+
+    # ====================================================================================================================
+    # Password Management
+    # ====================================================================================================================
+    # keepassxc: password manager with secure storage and browser integration.
+    # Includes keepassxc-cli for command-line/scripting access.
+    keepassxc
 
     # ====================================================================================================================
     # Misc Quality-of-Life Tools

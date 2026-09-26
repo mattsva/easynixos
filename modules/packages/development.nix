@@ -208,91 +208,75 @@
 
   ];
 
-  # ====================================================================================================================
+   # ====================================================================================================================
   # NVIDIA GPU SETTINGS
   # ====================================================================================================================
   hardware.nvidia.modesetting.enable = true;
 
   # ====================================================================================================================
-  # OLLAMA: Local LLM Server with GPU Acceleration
+  # OLLAMA: Local LLM Server with NVIDIA CUDA Acceleration
   # ====================================================================================================================
-  # Ollama runs multiple language models locally with CUDA GPU support.
-  # Web UI: Open WebUI (http://localhost:8080)
-  # API: http://localhost:11434/api/generate
-  # Command-line: ollama run <model>
+  # Local LLM inference server.
   #
-  # Model Selection Strategy:
-  # - mistral: Fast, good general-purpose model (7B, ~4.1GB)
-  # - neural-chat: Optimized for conversation (7B, ~4.1GB)
-  # - orca-mini: Lightweight, good reasoning (3B, ~1.7GB)
-  # - llama2: Solid fallback, very stable (7B, ~3.8GB)
-  # - codegemma: Specialized for code generation (7B, ~4.0GB)
-  # - nomic-embed-text: Text embeddings for RAG/search (274M, ~274MB)
-  # - mxbai-embed-large: Larger embeddings (335M, ~335MB)
+  # API:
+  #   http://localhost:11434/api
   #
-  # Load time depends on RAM. Keep total under your VRAM capacity.
-  # Current selection: ~13-15GB total (fits on modern GPUs).
-  #services.ollama = {
-  #  enable = false; # disabled by default to avoid heavy service failures during install
-  #  package = pkgs.ollama-cuda; # keep CUDA package if you have NVIDIA GPU
-
-    # Models to preload on startup. Comment out unused models to free VRAM.
-#    loadModels = [
-#      "mistral:latest"           # 7B - Fast, balanced, best for general use
-#      "neural-chat:latest"       # 7B - Conversation-optimized
-#      "orca-mini:3b"             # 3B - Lightweight, good reasoning
-#      "codegemma:latest"         # 7B - Code generation specialist
-#      "nomic-embed-text:latest"  # 274M - Text embeddings for search/RAG
-#    ];
-
-    # No serviceConfig here — set systemd service options below instead.
- # };
-
-  # Ensure the generated systemd unit runs as the correct user and has needed env
- # systemd.services.ollama.serviceConfig = {
- #   User = vars.userName;
- #   Environment = [ "HOME=/home/${vars.userName}" "OLLAMA_NUM_GPU=999" "CUDA_VISIBLE_DEVICES=0" ];
- # };
+  # OpenAI-compatible API:
+  #   http://localhost:11434/v1
+  #
+  # CLI:
+  #   ollama run <model>
+  #
+  # Hermes Agent can use the OpenAI-compatible endpoint:
+  #   http://localhost:11434/v1
+  #
+  # Models are intentionally NOT preloaded at boot. Ollama loads models
+  # on demand, which avoids unnecessarily consuming VRAM/RAM.
+  services.ollama = {
+    enable = true;
+    package = pkgs.ollama-cuda;
+  };
 
   # ====================================================================================================================
   # OPEN-WEBUI: Web Interface for Ollama
   # ====================================================================================================================
-  # User-friendly web UI for interacting with Ollama models.
-  # Access: http://localhost:8080
-  # Supports:
-  # - Chat interface with all loaded models
-  # - Model management
-  # - Conversation history
-  # - API integration
- # services.open-webui = {
- #   enable = false; # disabled temporarily to avoid Python build/service failures during debugging
- #   port = 8080;
-    # openaiAPIKey can be set here if integrating with OpenAI alongside Ollama
-#  };
+  # Optional web interface for locally hosted Ollama models.
+  #
+  # Access:
+  #   http://localhost:8080
+  #
+  # Disabled by default. Enable if you want a browser-based chat UI.
+  # Hermes does not require Open WebUI.
+  #
+  # services.open-webui = {
+  #   enable = true;
+  #   port = 8080;
+  # };
 
   # ====================================================================================================================
-  # SEARX: Private Meta-Search Engine
+  # SEARXNG: Private Meta-Search Engine
   # ====================================================================================================================
-  # Self-hosted, privacy-respecting search engine that aggregates results from multiple sources.
-  # Access: http://localhost:8069
-  # Features:
-  # - No tracking, no profiling
-  # - Respects Do Not Track requests
-  # - Query anonymization
-  # - Multiple language support (DE, EN configured)
-  # Enable Searx only after providing a private server.secret_key in a local
-  # module. This keeps reusable credentials out of the public flake and Nix store.
-  services.searx.enable = false;
+  # Self-hosted metasearch engine for local/private web search.
+  #
+  # Useful for Hermes and other local agents as a search backend.
+  #
+  # Access:
+  #   http://localhost:8069
+  #
+  # IMPORTANT:
+  # SearXNG requires a secret key. Keep the secret outside the public
+  # flake/Nix store, for example in a private machine-specific module.
+  services.searx = {
+    enable = false;
+  };
 
   # ====================================================================================================================
   # DOCKER: Container Runtime & Virtualization
   # ====================================================================================================================
   # Docker daemon for containerized development and deployment.
-  # The configured user is in the "docker" group (set in modules/system/user.nix).
-  # Note: Starts on first docker command, not automatically at boot.
   virtualisation.docker = {
     enable = true;
-    enableOnBoot = false;  # Lazy-load: start on first docker command
+    enableOnBoot = false;
   };
 
   # ====================================================================================================================
