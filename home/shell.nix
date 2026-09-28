@@ -1,6 +1,6 @@
 # home/shell.nix
 # ========================================================================================================================
-# Shell configuration: Fish shell, custom prompt, Atuin history, Direnv, Git setup, Emacs/DOOM
+# Shell configuration: Fish shell, custom prompt, Atuin history, Direnv, Git setup
 # ========================================================================================================================
 { config, pkgs, vars, ... }:
 
@@ -85,41 +85,18 @@
     };
   };
 
-  # =======================================================================================================================
-  # EMACS / DOOM EMACS
-  # =======================================================================================================================
+  # ========================================================================================================================
+  # FILES & ARCHIVES
+  # ========================================================================================================================
   home.packages = [
     pkgs.nerd-fonts.liberation
+    pkgs.peazip
   ];
 
-  # Emacs daemon auto-started by systemd user service — DOOM Emacs connects via emacsclient.
-  # services.emacs from home-manager handles the systemd unit, socket, and auto-start.
-  services.emacs = {
-    enable = true;
-    package = pkgs.emacs;
-    startWithUserSession = true;  # start with default.target (auto on login)
-    client.enable = false;        # we use our own DOOM-branded desktop entry
-    defaultEditor = false;
-  };
-
-  # Quick-launch aliases — connect to the daemon; start one if it is absent.
+  # ========================================================================================================================
+  # SHELL ALIASES
+  # ========================================================================================================================
   home.shellAliases = {
-    emacs = "emacsclient -c -a emacs";
-    doom  = "emacsclient -c -a emacs";  # DOOM Emacs shortcut
-  };
-
-  # DOOM Emacs desktop entry — launches a client frame linked to the running daemon.
-  home.file.".local/share/applications/emacs.desktop" = {
-    text = ''
-      [Desktop Entry]
-      Name=Emacs (DOOM)
-      Comment=DOOM Emacs — client to auto-running daemon
-      Exec=emacsclient -c -a emacs
-      Icon=emacs
-      Type=Application
-      Terminal=false
-      Categories=TextEditor;Development;Utility;
-      StartupWMClass=Emacs
-    '';
+    gx = "gh extension list";  # placeholder — add your own
   };
 }

@@ -75,6 +75,7 @@
     unzip       # Extract ZIP files
     zip         # Create ZIP files
     p7zip       # 7-Zip compression utility
+    peazip      # GUI archive manager (ZIP, 7z, RAR, TAR, etc.)
 
     # File utilities
     file        # Determine file types
@@ -84,6 +85,7 @@
     bat         # Syntax-highlighted cat alternative
     eza         # Modern ls replacement (exa fork)
     fzf         # Fuzzy file finder for CLI
+    coreutils   # Basic GNU utilities (ls, cp, mv, etc.)
 
     # Data processing
     jq          # Query and manipulate JSON

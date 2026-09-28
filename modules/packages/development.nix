@@ -37,9 +37,6 @@
     # Helix: modal editor with built-in language-server support.
     helix
 
-    # Emacs: extensible editor and development environment.
-    emacs
-
     # Tmux: Terminal multiplexer. Configured below with battery status plugin.
     tmux
 

@@ -71,7 +71,7 @@
                   };
               };
             })
-            # Pin wf-recorder to an older ffmpeg API provider to avoid build failures
+            # wf-recorder: pin to an older ffmpeg API provider to avoid build failures
             (final: prev:
               let
                 ffmpegPkg = if prev ? ffmpeg_5 then prev.ffmpeg_5 else prev.ffmpeg_4;
